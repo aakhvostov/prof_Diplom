@@ -9,7 +9,7 @@ Base = declarative_base()
 DSN = 'postgres://nelot:netology@localhost:5432/netology'
 engine = create_engine(DSN)
 Session = sessionmaker(bind=engine)
-
+session = Session()
 
 def get_birth_date(bdate):
     try:
@@ -38,4 +38,9 @@ def calculate_age(day, month, year):
 
 
 if __name__ == '__main__':
+    print(f'Сердечко - \U0001F497')
+    print(f'Галочка - \U00002705')
+    print(f'Крестик - \U0000274C')
+    print(f'Пропуск - \U0000267B')
+    print(f'Exit - \U000024BA\U000024CD\U000024BE\U000024C9')
     pass
