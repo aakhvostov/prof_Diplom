@@ -74,7 +74,6 @@ class VkUser:
         users_info_dict = self.vk_api.users.search(count=1000, age_from=age_from, age_to=age_to,
                                                    sex=sex, city=self.get_city_id(city), relation=relation,
                                                    fields='bdate')
-
         return users_info_dict['items']
 
 
