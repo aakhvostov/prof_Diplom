@@ -1,7 +1,7 @@
 from vk_module import VkUser
 from DB import PostgresBase
 from indep_func import get_birth_date, Session, session
-from sql_orm import UserVk, UserPhoto, DatingUser, SkippedUser, IgnoreUser, OrmFunctions
+from sql_orm import UserVk, UserPhoto, DatingUser, SkippedUser, IgnoreUser, ORMFunctions
 
 
 pg_base = PostgresBase()
@@ -60,7 +60,7 @@ def start_search():
     except KeyError:
         age = 'Нет данных'
     # проверка наличия запроса User_id - Search_range в базе данных
-    id_with_range = OrmFunctions(session).is_id_and_range_inside_user_vk(user_info['id'], search_range)
+    id_with_range = ORMFunctions(session).is_id_and_range_inside_user_vk(user_info['id'], search_range)
     # Если есть совпадение ПОЛНОЕ - по Id + Range - спросить:
     # продолжить поиск и добавлять людей по этому запросу или прервать работу
     if id_with_range:
@@ -82,8 +82,8 @@ def start_search():
 if __name__ == '__main__':
     # print(start_search.__doc__)
     # make_tables()         # создаем все таблицы
-    # print(OrmFunctions(session).is_id_inside_user_vk(13924278))
-    # print(OrmFunctions(session).id_and_range_inside_user_vk(1, '30-32'))
+    # print(ORMFunctions(session).is_id_inside_user_vk(13924278))
+    # print(ORMFunctions(session).id_and_range_inside_user_vk(1, '30-32'))
     # user_in_table = session.query(VkUser).filter
     # print(ignore_ids)
     a = start_search()

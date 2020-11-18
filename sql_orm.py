@@ -62,7 +62,7 @@ class SkippedUser(Base):
                       (ForeignKeyConstraint(('user_id', 'user_id_range'), [UserVk.user_id, UserVk.search_range])),)
 
 
-class OrmFunctions:
+class ORMFunctions:
 
     def __init__(self, session_elem):
         self.session = session_elem
@@ -88,7 +88,7 @@ class OrmFunctions:
 if __name__ == '__main__':
     # Base.metadata.create_all(engine)
     # OrmFunctions(session).is_inside_ignore_dating_skipped(5015179)
-
+    user = session.query(DatingUser).filter(DatingUser.user_id_range == '30-38')
     # ignore_ids = [ignore_user.user_ignore_id for ignore_user in session.query(
     #     UserVk).filter_by(user_id=206241).first().ignore_users]
 
