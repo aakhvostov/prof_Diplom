@@ -32,6 +32,8 @@ class DatingUser(Base):
     photos = relationship('UserPhoto', backref='user_photo')
     __table_args__ = (ForeignKeyConstraint(('user_id', 'user_id_range'), [UserVk.user_id, UserVk.search_range]),)
 
+    # def __repr__(self):
+    #     return print('www')
 
 class UserPhoto(Base):
     __tablename__ = 'user_photo'
@@ -66,6 +68,7 @@ class ORMFunctions:
 
     def __init__(self, session_elem):
         self.session = session_elem
+        self.search_range_dict = {}
 
     def is_id_inside_user_vk(self, user_vk_id: int):        # не пользуется
         result = self.session.query(UserVk).filter(UserVk.user_id == user_vk_id)
@@ -79,16 +82,32 @@ class ORMFunctions:
     def is_inside_ignore_dating_skipped(self, vk_search_id):
         result = self.session.query(UserVk).join(DatingUser).join(IgnoreUser).join(SkippedUser).filter(
             UserVk.user_id == vk_search_id)
-        print(result)
-        print()
         print(self.session.query(result.exists()).one()[0])
         # return self.session.query(result.exists()).one()[0]
+
+    def show_id_and_range(self, user_vk_id):
+        result = self.session.query(UserVk.search_range).filter(UserVk.user_id == user_vk_id).all()
+        for k, v in enumerate([ranges[0] for ranges in result]):
+            self.search_range_dict[k] = v
+        print(self.search_range_dict)
+
+    def show_dating_users(self, user_vk_id, find_range):
+        result = self.session.query(DatingUser).filter_by(user_id=user_vk_id,
+                                                          user_id_range=self.search_range_dict[find_range]).all()
+        print(result)
+        # print([user for user in result])
+        return
 
 
 if __name__ == '__main__':
     # Base.metadata.create_all(engine)
     # OrmFunctions(session).is_inside_ignore_dating_skipped(5015179)
-    user = session.query(DatingUser).filter(DatingUser.user_id_range == '30-38')
+    # user = session.query(DatingUser).filter(DatingUser.user_id_range == '30-38')
+
+    # ses = ORMFunctions(session)
+    # ses.show_id_and_range(13924278)
+    # ses.show_dating_users(13924278, 0)
+
     # ignore_ids = [ignore_user.user_ignore_id for ignore_user in session.query(
     #     UserVk).filter_by(user_id=206241).first().ignore_users]
 

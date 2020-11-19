@@ -23,6 +23,5 @@ def get_age(birth_info):
     return age
 
 
-
 if __name__ == '__main__':
     pass
