@@ -41,7 +41,10 @@ class VkUser:
                                         k > sorted(self.tmp.keys(), reverse=True)[count_photos]}
                 return self.photo_info_dict
             except IndexError:
-                return self.tmp
+                if len(self.tmp) == 0:
+                    return str(f'у юзера {user_id} нет фотографий в профиле')
+                else:
+                    return self.tmp
         except vk_api.exceptions.ApiError:
             return str(f'профиль юзера {user_id} приватный - фоток нет')
 
@@ -90,7 +93,7 @@ class VkUser:
 if __name__ == '__main__':
     # print(VkUser().search_dating_user(39, 49, 1, 4, 6)[4]['bdate'])
     # print(VkUser().get_users_best_photos(16766362, 3))
-    # print(VkUser().get_user_info(1140993))
+    # print(VkUser().get_user_info(13924278))
     # print(VkUser().search_dating_user(30, 39, 1, 1, 5))[0]
     # print(resp['response'])
     pass

@@ -1,20 +1,13 @@
 from vk_module import VkUser
 from DB import PostgresBase
-from indep_func import get_age, session
-from sql_orm import UserVk, UserPhoto, DatingUser, SkippedUser, IgnoreUser, ORMFunctions
+from indep_func import get_age, session, engine
+from sql_orm import UserVk, UserPhoto, DatingUser, SkippedUser, IgnoreUser, ORMFunctions, Base
 
 pg_base = PostgresBase()
+orm = ORMFunctions(session)
 
 
-def make_tables():
-    pg_base.create_table_user_vk()
-    pg_base.create_table_dating_user()
-    pg_base.create_table_user_photo()
-    pg_base.create_table_ignore_user()
-    pg_base.create_table_skipped_user()
-
-
-def get_start_data(user_vk_id):
+def get_started_data(user_vk_id):
     """
     :param user_vk_id: Id пользователя, ведущего поиск
     :return: возвращает кортеж данных о пользователе совершившем поиск (id, возраст, диапозон поиска)
@@ -38,7 +31,7 @@ def get_start_data(user_vk_id):
     except KeyError:
         age = 'нет данных'
     # проверка наличия запроса User_id - Search_range в базе данных
-    id_with_range = ORMFunctions(session).is_id_and_range_inside_user_vk(user_info['id'], search_range)
+    id_with_range = orm.is_id_and_range_inside_user_vk(user_info['id'], search_range)
     # Если есть совпадение ПОЛНОЕ - по Id + Range - спросить:
     # продолжить поиск и добавлять людей по этому запросу или прервать работу
     if id_with_range:
@@ -53,15 +46,15 @@ def get_start_data(user_vk_id):
     # Если нет ПОЛНОГО совпадения по Id + Range - добавить в базу новую запись и вести поиск
     else:
         city_name = VkUser().get_city_name(city_id)
-        pg_base.add_user_vk(user_info['id'], user_info['first_name'], user_info['last_name'], age,
-                            search_range, user_info['sex'], city_name[0]['title'])
+        UserVk().add_user_vk(user_info['id'], user_info['first_name'], user_info['last_name'], age,
+                             search_range, user_info['sex'], city_name[0]['title'])
         return age_from, age_to, sex, city_id, status, user_info['id'], search_range
 
 
 def main():
-    print('Добро пожаловать в сервис по подбору своей второй половинки\nВведите ваш User_id Вконтакте')
-    user_id = input()
+    user_id = input('Добро пожаловать в сервис по подбору своей второй половинки\nВведите ваш User_id Вконтакте\n')
     while True:
+        user_id = VkUser().get_user_info(user_id)['id']
         user_input = int(input('Что вы хотели бы сделать?\n'
                                '1 - начать новый поиск\n'
                                '2 - показать понравившихся людей\n'
@@ -69,12 +62,18 @@ def main():
                                '4 - посмотреть черный спискок\n'
                                '5 - удалить из черного списка человека\n'
                                '6 - сменить Vk Id\n'
-                               '7 - выйти'))
+                               '7 - выйти\n'
+                               '911 - удалить все базы данных и создать заново\n'))
         if user_input == 1:
-            search_details = get_start_data(user_id)
+            search_details = get_started_data(user_id)
             pg_base.decision_for_user(VkUser().search_dating_user(*search_details[:5]), *search_details[5:])
         elif user_input == 2:
-            pass
+            orm.show_id_and_range(user_id)
+            range_input = int(input('Выберите диапозон поиска\n'))
+            users_dating_id = orm.show_dating_users(user_id, range_input)
+            for user in users_dating_id:
+                print(f'https://vk.com/id{user}')
+                print()
         elif user_input == 3:
             pass
         elif user_input == 4:
@@ -82,27 +81,26 @@ def main():
         elif user_input == 5:
             pass
         elif user_input == 6:
-            user_id = int(input())
+            user_id = input('Введите новый id\n')
         elif user_input == 7:
             break
+        elif user_input == 911:
+            Base.metadata.drop_all(engine)
+            Base.metadata.create_all(engine)
         else:
             break
 
 
 if __name__ == '__main__':
     main()
-    # data = get_start_data()
-    # print(data)
+
     # проверка отсутствия фоток в профиле
     # pg_base.decision_for_user(VkUser().search_dating_user('32', '39', '1', 60, '6'), 13924278, '32-39')
 
-    # print(start_search.__doc__)
-    # make_tables()         # создаем все таблицы
     # print(ORMFunctions(session).is_id_inside_user_vk(13924278))
     # print(ORMFunctions(session).id_and_range_inside_user_vk(1, '30-32'))
     # user_in_table = session.query(VkUser).filter
     # print(ignore_ids)
-    #
     #
     # Что еще необхоимо сделать:
 
