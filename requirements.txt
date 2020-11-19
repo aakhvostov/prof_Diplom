@@ -1,3 +1,4 @@
 peewee
 sqlalchemy
 psycopg2
+vk_api

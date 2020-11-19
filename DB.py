@@ -36,10 +36,10 @@ class PostgresBase:
 
     def create_table_user_photo(self):
         self.connection.execute("""CREATE TABLE if not exists User_photo (
-                            User_photo_id serial primary key,
-                            Photo_link text,
-                            Photo_likes integer,
-                            Dating_id integer references Dating_user(Dating_id));""")
+                                    User_photo_id serial primary key,
+                                    Photo_link text,
+                                    Photo_likes integer,
+                                    Dating_id integer references Dating_user(Dating_id));""")
 
     def create_table_ignore_user(self):
         self.connection.execute("""CREATE TABLE if not exists Ignore_user (
@@ -190,7 +190,8 @@ class PostgresBase:
             last_name = person['last_name']
             user_id = person['id']
             try:
-                age = get_age(person['bdate'])
+                age = person['bdate']
+                age = get_age(age)
             except KeyError:
                 age = 'нет данных'
             if not self.is_inside_ignore_dating_skipped(user_id, search_id):

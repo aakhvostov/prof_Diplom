@@ -14,7 +14,7 @@ class VkUser:
         :param user_id: принимает User ID или Короткое название аккаунта VK
         :return: словарь со информацией о Юзере (Имя, Фамилия, Id, пол, день рождеждения, город(id, название)
         """
-        user = self.vk_api.users.get(user_ids=user_id, fields='first_name, last_name, sex, relation, bdate, city')
+        user = self.vk_api.users.get(user_ids=user_id, fields='first_name, last_name, sex, relation, bdate')
         return user[0]
 
     def get_users_best_photos(self, user_id, count_photos=3):
@@ -25,22 +25,25 @@ class VkUser:
         :return: словарь с ТОП 3мя фотографиями (ссылки (значения))
         из профиля аккаунта с их лайками (в качетстве имени (ключ))
         """
-        photos_info = self.vk_api.photos.get(owner_id=self.get_user_info(user_id)['id'], album_id='profile',
-                                             extended=1, count=1000, photo_sizes=0)
-        # создаем словарь со всеми лайками и ссылками на фото
-        for elem in photos_info['items']:
-            photo_url = elem['sizes'][-1]['url']
-            photos_list_likes = elem['likes']['count']
-            if photos_list_likes in self.photo_info_dict:
-                self.tmp[photos_list_likes - 1] = photo_url
-            self.tmp[photos_list_likes] = photo_url
-        # новый словарь с необходимым количеством максимальных лайков
         try:
-            self.photo_info_dict = {k: v for k, v in self.tmp.items() if
-                                    k > sorted(self.tmp.keys(), reverse=True)[count_photos]}
-            return self.photo_info_dict
-        except IndexError:
-            return self.tmp
+            photos_info = self.vk_api.photos.get(owner_id=self.get_user_info(user_id)['id'], album_id='profile',
+                                                 extended=1, count=1000, photo_sizes=0)
+            # создаем словарь со всеми лайками и ссылками на фото
+            for elem in photos_info['items']:
+                photo_url = elem['sizes'][-1]['url']
+                photos_list_likes = elem['likes']['count']
+                if photos_list_likes in self.photo_info_dict:
+                    self.tmp[photos_list_likes - 1] = photo_url
+                self.tmp[photos_list_likes] = photo_url
+            # новый словарь с необходимым количеством максимальных лайков
+            try:
+                self.photo_info_dict = {k: v for k, v in self.tmp.items() if
+                                        k > sorted(self.tmp.keys(), reverse=True)[count_photos]}
+                return self.photo_info_dict
+            except IndexError:
+                return self.tmp
+        except vk_api.exceptions.ApiError:
+            return str(f'профиль юзера {user_id} приватный - фоток нет')
 
     def get_city_id(self, city):
         """
@@ -54,6 +57,10 @@ class VkUser:
         except ValueError:
             city_id = self.vk_api.database.getCities(country_id=1, q=city)
             return city_id['items'][0]['id']
+
+    def get_city_name(self, city_id):
+        city_name = self.vk_api.database.getCitiesById(city_ids=city_id)
+        return city_name
 
     def search_dating_user(self, age_from, age_to, sex, city, status):
         """
