@@ -14,7 +14,7 @@ class VkUser:
         :param user_id: принимает User ID или Короткое название аккаунта VK
         :return: словарь со информацией о Юзере (Имя, Фамилия, Id, пол, день рождеждения, город(id, название)
         """
-        user = self.vk_api.users.get(user_ids=user_id, fields='first_name, last_name, sex, bdate, city')
+        user = self.vk_api.users.get(user_ids=user_id, fields='first_name, last_name, sex, relation, bdate, city')
         return user[0]
 
     def get_users_best_photos(self, user_id, count_photos=3):
@@ -35,9 +35,12 @@ class VkUser:
                 self.tmp[photos_list_likes - 1] = photo_url
             self.tmp[photos_list_likes] = photo_url
         # новый словарь с необходимым количеством максимальных лайков
-        self.photo_info_dict = {k: v for k, v in self.tmp.items() if
-                                k > sorted(self.tmp.keys(), reverse=True)[count_photos]}
-        return self.photo_info_dict
+        try:
+            self.photo_info_dict = {k: v for k, v in self.tmp.items() if
+                                    k > sorted(self.tmp.keys(), reverse=True)[count_photos]}
+            return self.photo_info_dict
+        except IndexError:
+            return self.tmp
 
     def get_city_id(self, city):
         """
@@ -52,7 +55,7 @@ class VkUser:
             city_id = self.vk_api.database.getCities(country_id=1, q=city)
             return city_id['items'][0]['id']
 
-    def search_dating_user(self, age_from, age_to, sex, city, relation):
+    def search_dating_user(self, age_from, age_to, sex, city, status):
         """
         Получаем словарь с результатами поиска для дальнейшего просмотра людей
         :param age_from:    возраст, от.
@@ -60,7 +63,7 @@ class VkUser:
         :param sex:         пол                 (1 — женщина;
                                                  2 — мужчина)
         :param city:        город (id или название)
-        :param relation:    семейное положение (1 — не женат/не замужем;
+        :param status:    семейное положение (1 — не женат/не замужем;
                                                 2 — есть друг/есть подруга;
                                                 3 — помолвлен/помолвлена;
                                                 4 — женат/замужем;
@@ -72,10 +75,15 @@ class VkUser:
         :return:            словарь с подходящими Юзерами
         """
         users_info_dict = self.vk_api.users.search(count=1000, age_from=age_from, age_to=age_to,
-                                                   sex=sex, city=self.get_city_id(city), relation=relation,
+                                                   sex=sex, city=self.get_city_id(city), status=status,
                                                    fields='bdate')
         return users_info_dict['items']
 
 
 if __name__ == '__main__':
+    # print(VkUser().search_dating_user(39, 49, 1, 4, 6)[4]['bdate'])
+    # print(VkUser().get_users_best_photos(16766362, 3))
+    # print(VkUser().get_user_info(1140993))
+    # print(VkUser().search_dating_user(30, 39, 1, 1, 5))[0]
+    # print(resp['response'])
     pass

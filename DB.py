@@ -1,6 +1,6 @@
 from sqlalchemy import exc
 from vk_module import VkUser
-from indep_func import get_birth_date
+from indep_func import get_age
 from indep_func import engine
 
 
@@ -105,7 +105,7 @@ class PostgresBase:
         """
         self.connection.execute("INSERT INTO Ignore_user (User_ignore_id, User_id, User_id_range) VALUES (%s, %s, %s);",
                                 (ignore_id, vk_id, search_range))
-        print(f'юзер {vk_id} добавлен в игнор список')
+        print(f'юзер {ignore_id} добавлен в игнор список')
 
     def add_skipped_user(self, skipped_id, vk_id, search_range):
         """
@@ -113,7 +113,7 @@ class PostgresBase:
         """
         self.connection.execute("INSERT INTO Skipped_user (Skipped_id, User_id, User_id_range) VALUES (%s, %s, %s);",
                                 (skipped_id, vk_id, search_range))
-        print(f'юзер {vk_id} добавлен в список для пропусков')
+        print(f'юзер {skipped_id} добавлен в список для пропусков')
 
     def is_inside_ignore_dating_skipped(self, vk_id, vk_search_id):
         """
@@ -189,7 +189,10 @@ class PostgresBase:
             first_name = person['first_name']
             last_name = person['last_name']
             user_id = person['id']
-            age = get_birth_date(person['bdate'])
+            try:
+                age = get_age(person['bdate'])
+            except KeyError:
+                age = 'нет данных'
             if not self.is_inside_ignore_dating_skipped(user_id, search_id):
                 link = VkUser().get_users_best_photos(user_id)
                 print(f'{first_name} {last_name} - {link}\n')
@@ -218,7 +221,7 @@ class PostgresBase:
 
 if __name__ == '__main__':
     # PostgresBase().add_user_photo({1: "qwe", 2: "rte", 3: ""}, 13924278, 39377403)
-    PostgresBase().drop_tables('user_vk,ignore_user,dating_user,user_photo,skipped_user')
+    # PostgresBase().drop_tables('user_vk,ignore_user,dating_user,user_photo,skipped_user')
     # print(PostgresBase().output_users(2, 159555338))
     # print(PostgresBase().is_inside_user_vk(13924278, '30-31'))
     # PostgresBase().drop_tables('wer')

@@ -1,6 +1,6 @@
 from vk_module import VkUser
 from DB import PostgresBase
-from indep_func import get_birth_date, Session, session
+from indep_func import get_age, get_city, session
 from sql_orm import UserVk, UserPhoto, DatingUser, SkippedUser, IgnoreUser, ORMFunctions
 
 
@@ -27,7 +27,7 @@ def start_search():
     sex:         пол                 (1 — женщина;
                                              2 — мужчина)
     city:        город (id или название)
-    relation:    семейное положение (1 — не женат/не замужем;
+    status:    семейное положение (1 — не женат/не замужем;
                                             2 — есть друг/есть подруга;
                                             3 — помолвлен/помолвлена;
                                             4 — женат/замужем;
@@ -44,21 +44,20 @@ def start_search():
     age_to = input('Введите возраст ДО\n')
     sex = input('Введите пол 1 - ж, 2 - м\n')
     city = input('Введите город\n')
-    relation = input('Введите семейное положение\n1 — не женат/не замужем; 2 — есть друг/есть подруга; '
+    status = input('Введите семейное положение\n1 — не женат/не замужем; 2 — есть друг/есть подруга; '
                      '3 — помолвлен/помолвлена; 4 — женат/замужем; 5 — всё сложно; 6 — в активном поиске; '
                      '7 — влюблён/влюблена; 8 — в гражданском браке; 0 — не указано\n')
     user_info = VkUser().get_user_info(user_search_id)
     search_range = f'{age_from}-{age_to}'
     # Проверка исключение - если у Юзера VK в профиле нет данных о Городе или Дате рождения
     try:
-        user_city = user_info['city']['title']
+        user_city = get_city(user_info['city']['title'])
     except KeyError:
-        user_city = 'Нет данных'
+        user_city = 'нет данных'
     try:
-        birth_day = user_info['bdate']
-        age = get_birth_date(birth_day)
+        age = get_age(user_info['bdate'])
     except KeyError:
-        age = 'Нет данных'
+        age = 'нет данных'
     # проверка наличия запроса User_id - Search_range в базе данных
     id_with_range = ORMFunctions(session).is_id_and_range_inside_user_vk(user_info['id'], search_range)
     # Если есть совпадение ПОЛНОЕ - по Id + Range - спросить:
@@ -69,14 +68,14 @@ def start_search():
                        f"Желаете продолжить поиск по этой комбинации?\n"
                        f"Yes/No\n")
         if result.lower() == 'yes':
-            return age_from, age_to, sex, city, relation, user_info['id'], search_range
+            return age_from, age_to, sex, city, status, user_info['id'], search_range
         else:
             raise SystemExit('Всего хорошего!')
     # Если нет ПОЛНОГО совпадения по Id + Range - добавить в базу новую запись и вести поиск
     else:
         pg_base.add_user_vk(user_info['id'], user_info['first_name'], user_info['last_name'], age,
                             search_range, user_info['sex'], user_city)
-        return age_from, age_to, sex, city, relation, user_info['id'], search_range
+        return age_from, age_to, sex, city, status, user_info['id'], search_range
 
 
 if __name__ == '__main__':

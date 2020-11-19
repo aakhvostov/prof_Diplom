@@ -11,20 +11,28 @@ engine = create_engine(DSN)
 Session = sessionmaker(bind=engine)
 session = Session()
 
-def get_birth_date(bdate):
+
+def get_city(city_info):
     try:
-        a = bdate[2]
-        date_info = re.findall(r'(\d\d?).(\d\d?)?.?(\d{4})?', bdate)[0]
-        if date_info[2]:
-            age = calculate_age(date_info[0], date_info[1], date_info[2])
-        else:
-            age = bdate
+        user_city = city_info
     except KeyError:
-        age = 'no data'
+        user_city = 'Нет данных'
+    return user_city
+
+
+def get_age(birth_info):
+    try:
+        date_info = re.findall(r'(\d\d?).(\d\d?)?.?(\d{4})?', birth_info)[0]
+        if date_info[2]:
+            age = get_year(date_info[0], date_info[1], date_info[2])
+        else:
+            age = f"{date_info[0]}.{date_info[1]}"
+    except KeyError:
+        age = 'нет данных'
     return age
 
 
-def calculate_age(day, month, year):
+def get_year(day, month, year):
     """
     вычисляет возраст человека
     :param year: год
