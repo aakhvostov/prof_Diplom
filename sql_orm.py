@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, PrimaryKeyConstraint, ForeignKeyConstraint
 from sqlalchemy.orm import relationship
-from indep_func import Base, session, engine
+from indep_func import Base, session
 
 
 class UserVk(Base):
@@ -13,9 +13,6 @@ class UserVk(Base):
     search_range = Column(String(15))
     sex = Column(Integer)
     user_city = Column(String(40))
-    dating_users = relationship('DatingUser', backref='user_vk')
-    ignore_users = relationship('IgnoreUser', backref='user_vk')
-    skipped_users = relationship('SkippedUser', backref='user_vk')
     __table_args__ = (PrimaryKeyConstraint(user_id, search_range),)
 
     def add_user_vk(self, vk_id, firstname, lastname, age, search_range, sex, city):
@@ -60,7 +57,7 @@ class DatingUser(Base):
         self.user_id_range = search_range
         session.add(self)
         session.commit()
-        return print(f'юзер {self.dating_user_id} добавлен в \U0001F497 список')
+        return print(f'юзер {self.dating_user_id} добавлен в лайк список')
 
 
 class UserPhoto(Base):
@@ -99,7 +96,7 @@ class IgnoreUser(Base):
         self.user_id_range = search_range
         session.add(self)
         session.commit()
-        return print(f'юзер {self.user_ignore_id}  добавлен в \U0000274C список')
+        return print(f'юзер {self.user_ignore_id}  добавлен в игнор список')
 
 
 class SkippedUser(Base):
@@ -120,7 +117,7 @@ class SkippedUser(Base):
         self.user_id_range = search_range
         session.add(self)
         session.commit()
-        return print(f'юзер {self.skipped_id} добавлен в \U0000267B список')
+        return print(f'юзер {self.skipped_id} добавлен в скип список')
 
 
 class ORMFunctions:
@@ -130,12 +127,11 @@ class ORMFunctions:
         self.search_range_dict = {}
 
     def is_id_inside_user_vk(self, user_vk_id: int):  # не пользуется
-        result = self.session.query(UserVk).filter(UserVk.user_id == user_vk_id)
+        result = self.session.query(UserVk).filter_by(user_id=user_vk_id)
         return self.session.query(result.exists()).one()[0]
 
     def is_id_and_range_inside_user_vk(self, user_vk_id, age_range: str):
-        result = self.session.query(UserVk).filter(UserVk.user_id == user_vk_id).filter(
-            UserVk.search_range == age_range)
+        result = self.session.query(UserVk).filter_by(user_id=user_vk_id, search_range=age_range)
         return self.session.query(result.exists()).one()[0]
 
     def show_id_and_range(self, user_vk_id):
@@ -144,10 +140,11 @@ class ORMFunctions:
         :param user_vk_id: Id юзера
         :return: словарь с диапозонами поиска
         """
-        result = self.session.query(UserVk.search_range).filter(UserVk.user_id == user_vk_id).all()
+        result = self.session.query(UserVk.search_range).filter_by(user_id=user_vk_id).all()
         for k, v in enumerate([ranges[0] for ranges in result]):
             self.search_range_dict[k] = v
-        print(f'у Вас в таблице есть следующие диапозоны поиска {self.search_range_dict}')
+        if len(self.search_range_dict) != 0:
+            print(f'у Вас в таблице есть следующие диапозоны поиска {self.search_range_dict}')
         return self.search_range_dict
 
     def show_dating_users(self, user_vk_id, find_range):
@@ -159,40 +156,76 @@ class ORMFunctions:
         """
         result = self.session.query(DatingUser).filter_by(user_id=user_vk_id,
                                                           user_id_range=self.search_range_dict[find_range]).all()
-        dating_users = [id.dating_user_id for id in result]
+        dating_users = [dat_id.dating_user_id for dat_id in result]
         print(f'по Вашему запросу в таблице найдены id - {dating_users}')
         return dating_users
+
+    def show_ignore_users(self, user_vk_id, find_range):
+        """
+        Функция для поиска людей в Dating_user по паре Id+range
+        :param user_vk_id: Id человека ведущего поиск
+        :param find_range: диапозон поиска
+        :return: список id людей из Dating_user
+        """
+        result = self.session.query(IgnoreUser).filter_by(user_id=user_vk_id,
+                                                          user_id_range=self.search_range_dict[find_range]).all()
+        ignore_users = [ign_id.user_ignore_id for ign_id in result]
+        print(f'по Вашему запросу в таблице найдены id - {ignore_users}')
+        return ignore_users
 
     def select_photo(self, dating_user_id, user_id):
         dating_id = self.session.query(DatingUser).filter_by(dating_user_id=dating_user_id,
                                                              user_id=user_id).one().dating_id
         return dating_id
 
+    def is_inside_ignore_dating_skipped(self, vk_id, vk_search_id, search_range):
+        """
+        Проверяет юзера на наличие его в таблицах лайков и игноров
+        Если совпадение есть, то Юзер пропускается в выдаче
+        :param vk_id: Юзер id, которого нашли
+        :param vk_search_id: Юзер id, кто искал
+        :param search_range: диапозон поиска
+        :return: True или False
+        """
+        result = self.session.query(DatingUser).filter_by(dating_user_id=vk_id, user_id=vk_search_id,
+                                                          user_id_range=search_range)
+        entry = self.session.query(result.exists()).one()[0]
+        if entry:
+            return entry
+        else:
+            result = self.session.query(IgnoreUser).filter_by(user_ignore_id=vk_id, user_id=vk_search_id,
+                                                              user_id_range=search_range)
+            entry = self.session.query(result.exists()).one()[0]
+            if entry:
+                return entry
+            else:
+                result = self.session.query(SkippedUser).filter_by(skipped_id=vk_id, user_id=vk_search_id,
+                                                                   user_id_range=search_range)
+                entry = self.session.query(result.exists()).one()[0]
+        return entry
 
+    def find_dating_user_photo(self, user_vk_id, user_search_id, search_range):
+        photo_user_data = {}
+        dating_id = self.session.query(DatingUser).filter_by(dating_user_id=user_vk_id, user_id=user_search_id,
+                                                             user_id_range=search_range).one()
+        photos = self.session.query(UserPhoto).filter_by(dating_id=dating_id.dating_id).all()
+        for user_photo in photos:
+            link = user_photo.photo_link
+            like = user_photo.photo_likes
+            photo_user_data[like] = link
+        return photo_user_data
+
+    def remove_dating_user(self):
+        pass
 
 
 if __name__ == '__main__':
+    new_used = ORMFunctions(session)
+    # print(new_used.find_dating_user_photo(250183789, 13924278, '32-39'))
     # print(ORMFunctions(session).is_id_and_range_inside_user_vk(13924278, '38-40'))
-    # user = session.query(DatingUser).filter(DatingUser.user_id_range == '30-38'))
-    # new_used = ORMFunctions(session)
     # new_used.show_id_and_range(13924278)
     # new_used.select_photo(143041215, 1582074)
+    # print(new_used.is_inside_ignore_dating_skipped(45269508, 13924278, '30-31'))
     # print(new_used.show_dating_users(13924278, 1))
     # new_used.is_inside_ignore_dating_skipped(18349823)
-    # ignore_ids = [ignore_user.user_ignore_id for ignore_user in session.query(
-    #     UserVk).filter_by(user_id=206241).first().ignore_users]
-
-    # vk1 = UserVk(user_id=99999999, user_firstname='Андрей', user_lastname='Хвостов',
-    #              user_age='28', search_range='30-31', sex=1, user_city='1')
-    # session.add_all([vk1])
-    # session.commit()
-
-    # dat1 = DatingUser(dating_user_id=1234, user_firstname='Андрей', user_lastname='Хвостов',
-    #                   user_age='32', user_id=99999999)
-    # session.add_all([dat1])
-    # session.commit()
-
-    # ign1 = IgnoreUser(user_ignore_id=99999999, user_id=99999999)
-    # session.add_all([ign1])
-    # session.commit()
     pass

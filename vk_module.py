@@ -1,4 +1,23 @@
+from urllib.parse import urlencode
+from requests import get
 import vk_api
+
+
+def get_token():
+    url = f"https://oauth.vk.com/access_token"
+    params = {
+        "client_id": 7585945,
+        "client_secret": "xVuQdxMEBJQkz937xpeY",
+        "grant_type": "client_credentials",
+        "scope": "friends",
+        "v": 5.126
+    }
+    url_requests = "?".join((url, urlencode(params)))
+    response = get(url_requests)
+    print(url_requests)
+    ACCESS_TOKEN = response.json()["access_token"]
+    print(ACCESS_TOKEN)
+    return ACCESS_TOKEN
 
 
 class VkUser:
@@ -8,6 +27,8 @@ class VkUser:
         self.vk_api = vk_api.VkApi(token=self.token).get_api()
         self.photo_info_dict = {}
         self.tmp = {}
+        self.offset = 0
+
 
     def get_user_info(self, user_id):
         """
@@ -68,12 +89,14 @@ class VkUser:
     def search_dating_user(self, age_from, age_to, sex, city, status):
         """
         Получаем словарь с результатами поиска для дальнейшего просмотра людей
+        :param offset:      параметр отступа, чтобы люди не повторялись при поиске,
+                            для каждого нового пользователя обнуляется
         :param age_from:    возраст, от.
         :param age_to:      возраст, до.
         :param sex:         пол                 (1 — женщина;
                                                  2 — мужчина)
         :param city:        город (id или название)
-        :param status:    семейное положение (1 — не женат/не замужем;
+        :param status:      семейное положение (1 — не женат/не замужем;
                                                 2 — есть друг/есть подруга;
                                                 3 — помолвлен/помолвлена;
                                                 4 — женат/замужем;
@@ -82,18 +105,20 @@ class VkUser:
                                                 7 — влюблён/влюблена;
                                                 8 — в гражданском браке;
                                                 0 — не указано)
-        :return:            словарь с подходящими Юзерами
+        :return:            список словарей подходящих Юзеров
         """
-        users_info_dict = self.vk_api.users.search(count=1000, age_from=age_from, age_to=age_to,
+        users_info_dict = self.vk_api.users.search(offset=self.offset, count=5, age_from=age_from, age_to=age_to,
                                                    sex=sex, city=self.get_city_id(city), status=status,
                                                    fields='bdate')
+        self.offset += 5
         return users_info_dict['items']
 
 
 if __name__ == '__main__':
-    # print(VkUser().search_dating_user(39, 49, 1, 4, 6)[4]['bdate'])
-    # print(VkUser().get_users_best_photos(16766362, 3))
-    # print(VkUser().get_user_info(13924278))
-    # print(VkUser().search_dating_user(30, 39, 1, 1, 5))[0]
+    # get_token()
+    # print(vk_user_obj.search_dating_user(39, 49, 1, 4, 6)[4]['bdate'])
+    # print(vk_user_obj.get_users_best_photos(16766362, 3))
+    # print(vk_user_obj.get_user_info(13924278))
+    # print(vk_user_obj.search_dating_user(30, 39, 1, 1, 5))[0]
     # print(resp['response'])
     pass
