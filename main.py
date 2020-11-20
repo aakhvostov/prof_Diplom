@@ -93,8 +93,7 @@ def decision_for_user(users_list, search_id, search_range):
                 IgnoreUser().add_ignore_user(user_id, search_id, search_range)
                 continue
             elif decision == str(7):
-                print('До свидания!')
-                break
+                return False
             else:
                 print('Ввели что-то не то')
                 break
@@ -123,16 +122,17 @@ def main():
         if user_input == 1:
             search_details = get_started_data(user_id)
             if search_details:
-                decision_for_user(vk_func.search_dating_user(*search_details[:5]), *search_details[5:])
-                while True:
-                    next_list = int(input(f'Ops! список закончился, желаете еще поискать половинку?\n'
-                                          f'Введите\n1 - да\n2 - нет\n'))
-                    if next_list == 1:
-                        decision_for_user(vk_func.search_dating_user(*search_details[:5]), *search_details[5:])
-                    elif next_list == 2:
-                        break
-                    else:
-                        print('Ввели что-то не то')
+                answer = decision_for_user(vk_func.search_dating_user(*search_details[:5]), *search_details[5:])
+                if answer:
+                    while True:
+                        next_list = int(input(f'Ops! список закончился, желаете еще поискать половинку?\n'
+                                              f'Введите\n1 - да\n2 - нет\n'))
+                        if next_list == 1:
+                            decision_for_user(vk_func.search_dating_user(*search_details[:5]), *search_details[5:])
+                        elif next_list == 2:
+                            break
+                        else:
+                            print('Ввели что-то не то')
         elif user_input == 2:
             ranges = orm.show_id_and_range(user_id)
             if len(ranges) != 0:
