@@ -1,8 +1,7 @@
 import re
 from vk_module import VkUser
 from indep_func import get_age, session, engine
-from sql_orm import ORMFunctions, Base, UserVk, DatingUser, UserPhoto, SkippedUser, IgnoreUser
-
+from sql_orm import ORMFunctions, Base, UserVk, DatingUser, UserPhoto, IgnoreUser#, SkippedUser
 orm = ORMFunctions(session)
 
 
@@ -78,19 +77,19 @@ def decision_for_user(users_list, search_id, search_range):
             link = VkUser().get_users_best_photos(user_id)
             print(f'{first_name} {last_name} - {link}\n')
             decision = input('Нравится этот человек?\n'
-                             '"1" - добавить в список понравившихся\n'
-                             '"2" - пропустить и добавить в список пропусков\n'
-                             '"3" - добавить в черный список\n'
+                             '"1" - ДА - добавить в список понравившихся\n'
+                             '"2" - НЕТ - пропустить и добавить в черный список\n'
+                             '"3" - пропустить\n'
                              '"7" - выход\n')
             if re.match("[/+1yYдД]", decision):
                 DatingUser().add_dating_user(user_id, first_name, last_name, age, search_id, search_range)
-                UserPhoto().add_user_photo(VkUser().get_users_best_photos(user_id), search_id, user_id)
+                UserPhoto().add_user_photo(VkUser().get_users_best_photos(user_id), user_id, search_id)
                 continue
             elif re.match("[/-2nNнН]", decision):
-                SkippedUser().add_skipped_user(user_id, search_id, search_range)
+                IgnoreUser().add_ignore_user(user_id, search_id, search_range)
                 continue
             elif decision == str(3):
-                IgnoreUser().add_ignore_user(user_id, search_id, search_range)
+                # SkippedUser().add_skipped_user(user_id, search_id, search_range)
                 continue
             elif decision == str(7):
                 return False
@@ -99,6 +98,26 @@ def decision_for_user(users_list, search_id, search_range):
                 break
         else:
             continue
+    return True
+
+
+def get_range_input(user_id):
+    """
+    Выводит диапозон поиска согласно данным таблицы User_vk
+    :param user_id:     Id человека ведущего поиск
+    :return:            диапозон поиска
+    """
+    ranges = orm.show_id_and_range(user_id)
+    if len(ranges) == 0:
+        print('Ops, похоже Вы еще не производили поиск!\n')
+        return None
+    if len(ranges) == 1:
+        return 0
+    if len(ranges) > 1:
+        range_input = int(input('Выберите диапозон:\n'))
+        if range_input in ranges:
+            return range_input
+        return 'неверное значение'
 
 
 def main():
@@ -120,7 +139,23 @@ def main():
                                '7 - выйти\n'
                                '911 - удалить все базы данных и создать заново\n'))
         if user_input == 1:
-            search_details = get_started_data(user_id)
+            range_input = get_range_input(user_id)
+            # проверка наличия уже происходивших поисков и продолжения их
+            if range_input == 'неверное значение':
+                print('Вы выбрали неверный диапозон')
+                continue
+            elif range_input is not None:
+                vk_func_dict = orm.get_vk_users(user_id, range_input)
+                vk_range_dict = vk_func_dict[0]
+                vk_object_dict = vk_func_dict[1]
+                # тут логика продолжения существующего поиска
+                    # вывести объект из vk_object_dict с индексом range_input и записать кортеж в search_details
+                    # search_details = # age_from, age_to, sex, city_id, status, user_info['id'], search_range
+                    # continue
+
+                search_details = get_started_data(user_id)
+            else:
+                search_details = get_started_data(user_id)
             if search_details:
                 answer = decision_for_user(vk_func.search_dating_user(*search_details[:5]), *search_details[5:])
                 if answer:
@@ -134,29 +169,57 @@ def main():
                         else:
                             print('Ввели что-то не то')
         elif user_input == 2:
-            ranges = orm.show_id_and_range(user_id)
-            if len(ranges) != 0:
-                range_input = int(input('Выберите диапозон поиска:\n'))
-                users_dating_id = orm.show_dating_users(user_id, range_input)
-                for user in users_dating_id:
-                    print(f'https://vk.com/id{user}')
-                print()
-            else:
-                print('Ops, похоже Вы еще не производили поиск.\n')
+            range_input = get_range_input(user_id)
+            dating_func_dict = orm.get_dating_users(user_id, range_input)
+            dating_dict = dating_func_dict[0]
+            if len(dating_dict) == 0:
+                print('Ops! смотреть некого\n')
+                continue
+            for user_dat_id in dating_dict.values():
+                print(f'https://vk.com/id{user_dat_id}')
+            print()
         elif user_input == 3:
-            pass
-        elif user_input == 4:
-            ranges = orm.show_id_and_range(user_id)
-            if len(ranges) != 0:
-                range_input = int(input('Выберите диапозон поиска:\n'))
-                users_ignore_id = orm.show_ignore_users(user_id, range_input)
-                for user in users_ignore_id:
-                    print(f'https://vk.com/id{user}')
-                print()
+            range_input = get_range_input(user_id)
+            dating_func_dict = orm.get_dating_users(user_id, range_input)
+            dating_dict = dating_func_dict[0]
+            if len(dating_dict) == 0:
+                print('Ops! удалять некого\n')
+                continue
+            dating_objs = dating_func_dict[1]
+            for key, url in enumerate(dating_dict.values()):
+                print(f'{key} - https://vk.com/id{url}')
+            ans = int(input('Кого хотите удалить?\nили введите 911 для отмены\n'))
+            if ans >= 0:
+                dating_objs[ans].remove_dating_user()
             else:
-                print('Ops, похоже Вы еще не производили поиск.\n')
+                print('Неверный ввод')
+                pass
+        elif user_input == 4:
+            range_input = get_range_input(user_id)
+            ignore_func_dict = orm.get_ignore_users(user_id, range_input)
+            ignore_dict = ignore_func_dict[0]
+            if len(ignore_dict) == 0:
+                print('Ops! смотреть некого\n')
+                continue
+            for user_ign_id in ignore_dict.values():
+                print(f'https://vk.com/id{user_ign_id}')
+            print()
         elif user_input == 5:
-            pass
+            range_input = get_range_input(user_id)
+            ignore_func_dict = orm.get_ignore_users(user_id, range_input)
+            ignore_dict = ignore_func_dict[0]
+            if len(ignore_dict) == 0:
+                print('Ops! удалять некого\n')
+                continue
+            ignore_objs = ignore_func_dict[1]
+            for key, url in enumerate(ignore_dict.values()):
+                print(f'{key} - https://vk.com/id{url}')
+            ans = int(input('Кого хотите удалить?\nили введите 911 для отмены\n'))
+            if ans in ignore_dict:
+                ignore_objs[ans].remove_ignore_user()
+            else:
+                print('Неверный ввод')
+                pass
         elif user_input == 6:
             new_user_id = input('Введите новый id\n')
             new_user_id = vk_func.get_user_info(new_user_id)['id']

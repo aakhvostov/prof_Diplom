@@ -107,10 +107,10 @@ class VkUser:
                                                 0 — не указано)
         :return:            список словарей подходящих Юзеров
         """
-        users_info_dict = self.vk_api.users.search(offset=self.offset, count=5, age_from=age_from, age_to=age_to,
+        users_info_dict = self.vk_api.users.search(offset=self.offset, count=7, age_from=age_from, age_to=age_to,
                                                    sex=sex, city=self.get_city_id(city), status=status,
                                                    fields='bdate')
-        self.offset += 5
+        self.offset += 7
         return users_info_dict['items']
 
 
