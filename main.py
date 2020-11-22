@@ -1,7 +1,7 @@
 import re
 from vk_module import VkUser
 from indep_func import get_age, session, engine
-from sql_orm import ORMFunctions, Base, UserVk, DatingUser, UserPhoto, IgnoreUser#, SkippedUser
+from sql_orm import ORMFunctions, Base, UserVk, DatingUser, UserPhoto, IgnoreUser  # , SkippedUser
 orm = ORMFunctions(session)
 
 
@@ -38,7 +38,7 @@ def get_started_data(user_vk_id):
                            f"Желаете продолжить поиск по этой комбинации?\n"
                            f"1 - Да / 2 - Нет\n"))
         if result == 1:
-            return age_from, age_to, sex, city_id, status, user_info['id'], search_range
+            return sex, city_id, status, user_info['id'], search_range
         elif result == 2:
             return False
         else:
@@ -47,8 +47,8 @@ def get_started_data(user_vk_id):
     else:
         city_name = VkUser().get_city_name(city_id)
         UserVk().add_user_vk(user_info['id'], user_info['first_name'], user_info['last_name'], age,
-                             search_range, user_info['sex'], city_name[0]['title'])
-        return age_from, age_to, sex, city_id, status, user_info['id'], search_range
+                             search_range, user_info['sex'], city_name[0]['title'], status)
+        return sex, city_id, status, user_info['id'], search_range
 
 
 def decision_for_user(users_list, search_id, search_range):
@@ -114,10 +114,13 @@ def get_range_input(user_id):
     if len(ranges) == 1:
         return 0
     if len(ranges) > 1:
-        range_input = int(input('Выберите диапозон:\n'))
+        range_input = int(input('Выберите диапозон. Или введите 911 для нового поиска\n'))
         if range_input in ranges:
             return range_input
-        return 'неверное значение'
+        elif range_input == 911:
+            return None
+        else:
+            return 'неверное значение'
 
 
 def main():
@@ -143,17 +146,19 @@ def main():
             # проверка наличия уже происходивших поисков и продолжения их
             if range_input == 'неверное значение':
                 print('Вы выбрали неверный диапозон')
-                continue
-            elif range_input is not None:
-                vk_func_dict = orm.get_vk_users(user_id, range_input)
-                vk_range_dict = vk_func_dict[0]
-                vk_object_dict = vk_func_dict[1]
-                # тут логика продолжения существующего поиска
-                    # вывести объект из vk_object_dict с индексом range_input и записать кортеж в search_details
-                    # search_details = # age_from, age_to, sex, city_id, status, user_info['id'], search_range
-                    # continue
-
                 search_details = get_started_data(user_id)
+            elif range_input is None:
+                search_details = get_started_data(user_id)
+            elif range_input is not None:
+                vk_object_dict = orm.get_vk_users(user_id, range_input)
+                age_patern = re.compile(r'(\d\d?)-(\d\d?\d?)')
+                sex = vk_object_dict.sex
+                city = vk_func.get_city_id(vk_object_dict.user_city)
+                search_range = vk_object_dict.search_range
+                age_from = age_patern.sub(r"\1", search_range)
+                age_to = age_patern.sub(r"\2", search_range)
+                status = vk_object_dict.status
+                search_details = (age_from, age_to, sex, city, status, user_id, search_range)
             else:
                 search_details = get_started_data(user_id)
             if search_details:
@@ -234,7 +239,6 @@ def main():
 
 if __name__ == '__main__':
     main()
-
     # проверка отсутствия фоток в профиле
     # print(ORMFunctions(session).is_id_inside_user_vk(13924278))
     # print(ORMFunctions(session).id_and_range_inside_user_vk(1, '30-32'))

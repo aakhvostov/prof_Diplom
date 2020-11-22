@@ -13,9 +13,10 @@ class UserVk(Base):
     search_range = Column(String(15))
     sex = Column(Integer)
     user_city = Column(String(40))
+    status = Column(String)
     __table_args__ = (PrimaryKeyConstraint(user_id, search_range),)
 
-    def add_user_vk(self, vk_id, firstname, lastname, age, search_range, sex, city):
+    def add_user_vk(self, vk_id, firstname, lastname, age, search_range, sex, city, status):
         """
         Добавляет человека в базу таблицу user_vk
         """
@@ -26,6 +27,7 @@ class UserVk(Base):
         self.search_range = search_range
         self.sex = sex
         self.user_city = city
+        self.status = status
         session.add(self)
         session.commit()
         return print(f'юзер {self.user_id} добавлен в user_vk список')
@@ -181,28 +183,25 @@ class ORMFunctions:
 
     def get_vk_users(self, vk_search_id, find_range):
         """
-        Функция для поиска диапозонов в User_vk по паре Id+range
+        Функция для поиска записи в User_vk по паре Id+range
         :param vk_search_id:    Id человека ведущего поиск
-        :param find_range:      диапозон поиска
-        :return:                словарь key + search_range из таблицы User_vk
-                                и список самих объектов из таблицы User_vk
+        :param find_range:      диапазон поиска
+        :return:                объект юзера из таблицы User_vk
         """
-        vk_dict = {}
         result = self.session.query(UserVk).filter_by(user_id=vk_search_id,
-                                                      search_range=self.search_range_dict[find_range]).all()
-        for key, user_obj in enumerate(result):
-            vk_dict[key] = user_obj.search_range
-        return vk_dict, result
+                                                      search_range=self.search_range_dict[find_range]).one()
+
+        return result
 
     def get_dating_users(self, vk_search_id, find_range):
         """
         Функция для поиска людей в Dating_user по паре Id+range
         :param vk_search_id:    Id человека ведущего поиск
-        :param find_range:      диапозон поиска
+        :param find_range:      диапазон поиска
         :return:                словарь dat_id + user_dat_vk_id из таблицы Dating_user
                                 и список самих объектов из таблицы Dating_user
         """
-        dating_dict = {}
+        dating_dict = {}  # скорее всего СДЕЛАТЬ SELF.DATING_DICT!!! и в остальных так же
         result = self.session.query(DatingUser).filter_by(user_id=vk_search_id,
                                                           user_id_range=self.search_range_dict[find_range]).all()
         for user_obj in result:
@@ -213,7 +212,7 @@ class ORMFunctions:
         """
         Функция для поиска людей в Ignore_user по паре Id+range
         :param vk_search_id:    Id человека ведущего поиск
-        :param find_range:      диапозон поиска
+        :param find_range:      диапазон поиска
         :return:                словарь key + user_ignore_id из Ignore_user
                                 и список самих объектов из таблицы Ignore_user
         """
