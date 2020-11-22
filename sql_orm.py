@@ -13,7 +13,7 @@ class UserVk(Base):
     search_range = Column(String(15))
     sex = Column(Integer)
     user_city = Column(String(40))
-    status = Column(String)
+    status = Column(Integer)
     __table_args__ = (PrimaryKeyConstraint(user_id, search_range),)
 
     def add_user_vk(self, vk_id, firstname, lastname, age, search_range, sex, city, status):
@@ -177,8 +177,8 @@ class ORMFunctions:
         result = self.session.query(UserVk.search_range).filter_by(user_id=vk_search_id).all()
         for k, v in enumerate([ranges[0] for ranges in result]):
             self.search_range_dict[k] = v
-        if len(self.search_range_dict) > 1:
-            print(f'у Вас в таблице есть следующие диапозоны поиска {self.search_range_dict}')
+        # if len(self.search_range_dict) > 1:
+        print(f'у Вас в таблице есть следующие диапозоны поиска {self.search_range_dict}')
         return self.search_range_dict
 
     def get_vk_users(self, vk_search_id, find_range):

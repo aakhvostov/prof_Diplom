@@ -2,6 +2,7 @@ import re
 from vk_module import VkUser
 from indep_func import get_age, session, engine
 from sql_orm import ORMFunctions, Base, UserVk, DatingUser, UserPhoto, IgnoreUser  # , SkippedUser
+
 orm = ORMFunctions(session)
 
 
@@ -38,17 +39,19 @@ def get_started_data(user_vk_id):
                            f"Желаете продолжить поиск по этой комбинации?\n"
                            f"1 - Да / 2 - Нет\n"))
         if result == 1:
-            return sex, city_id, status, user_info['id'], search_range
+            return age_from, age_to, sex, city_id, status, user_info['id'], search_range
         elif result == 2:
             return False
         else:
             raise SystemExit('Всего хорошего!')
     # Если нет ПОЛНОГО совпадения по Id + Range - добавить в базу новую запись и вести поиск
     else:
+        print(status)
+        print(type(status))
         city_name = VkUser().get_city_name(city_id)
         UserVk().add_user_vk(user_info['id'], user_info['first_name'], user_info['last_name'], age,
                              search_range, user_info['sex'], city_name[0]['title'], status)
-        return sex, city_id, status, user_info['id'], search_range
+        return age_from, age_to, sex, city_id, status, user_info['id'], search_range
 
 
 def decision_for_user(users_list, search_id, search_range):
@@ -111,9 +114,9 @@ def get_range_input(user_id):
     if len(ranges) == 0:
         print('Ops, похоже Вы еще не производили поиск!\n')
         return None
-    if len(ranges) == 1:
-        return 0
-    if len(ranges) > 1:
+    # if len(ranges) == 1:
+    #     return 0
+    if len(ranges) >= 1:
         range_input = int(input('Выберите диапозон. Или введите 911 для нового поиска\n'))
         if range_input in ranges:
             return range_input
@@ -146,7 +149,7 @@ def main():
             # проверка наличия уже происходивших поисков и продолжения их
             if range_input == 'неверное значение':
                 print('Вы выбрали неверный диапозон')
-                search_details = get_started_data(user_id)
+                continue
             elif range_input is None:
                 search_details = get_started_data(user_id)
             elif range_input is not None:
@@ -158,6 +161,7 @@ def main():
                 age_from = age_patern.sub(r"\1", search_range)
                 age_to = age_patern.sub(r"\2", search_range)
                 status = vk_object_dict.status
+                print(f'status (elif (not None) - {status}, {type(status)}')
                 search_details = (age_from, age_to, sex, city, status, user_id, search_range)
             else:
                 search_details = get_started_data(user_id)
@@ -194,7 +198,9 @@ def main():
             for key, url in enumerate(dating_dict.values()):
                 print(f'{key} - https://vk.com/id{url}')
             ans = int(input('Кого хотите удалить?\nили введите 911 для отмены\n'))
-            if ans >= 0:
+            if ans == 911:
+                continue
+            elif ans >= 0:
                 dating_objs[ans].remove_dating_user()
             else:
                 print('Неверный ввод')
