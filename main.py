@@ -1,3 +1,6 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import re
 from vk_module import VkUser
 from indep_func import get_age, session, engine
@@ -46,11 +49,9 @@ def get_started_data(user_vk_id):
             raise SystemExit('Всего хорошего!')
     # Если нет ПОЛНОГО совпадения по Id + Range - добавить в базу новую запись и вести поиск
     else:
-        print(status)
-        print(type(status))
         city_name = VkUser().get_city_name(city_id)
         UserVk().add_user_vk(user_info['id'], user_info['first_name'], user_info['last_name'], age,
-                             search_range, user_info['sex'], city_name[0]['title'], status)
+                             search_range, sex, city_name[0]['title'], status)
         return age_from, age_to, sex, city_id, status, user_info['id'], search_range
 
 
@@ -161,7 +162,6 @@ def main():
                 age_from = age_patern.sub(r"\1", search_range)
                 age_to = age_patern.sub(r"\2", search_range)
                 status = vk_object_dict.status
-                print(f'status (elif (not None) - {status}, {type(status)}')
                 search_details = (age_from, age_to, sex, city, status, user_id, search_range)
             else:
                 search_details = get_started_data(user_id)

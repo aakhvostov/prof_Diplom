@@ -107,7 +107,6 @@ class VkUser:
                                                 0 — не указано)
         :return:            список словарей подходящих Юзеров
         """
-        print(f'from - {age_from}, to - {age_to}, sex - {sex}, city - {city}, status - {status}')
         users_info_dict = self.vk_api.users.search(offset=self.offset, count=7, age_from=age_from, age_to=age_to,
                                                    sex=sex, city=self.get_city_id(city), status=status,
                                                    fields='bdate')
@@ -117,9 +116,4 @@ class VkUser:
 
 if __name__ == '__main__':
     # get_token()
-    # print(vk_user_obj.search_dating_user(39, 49, 1, 4, 6)[4]['bdate'])
-    # print(vk_user_obj.get_users_best_photos(16766362, 3))
-    # print(vk_user_obj.get_user_info(13924278))
-    # print(vk_user_obj.search_dating_user(30, 39, 1, 1, 5))[0]
-    # print(resp['response'])
     pass
