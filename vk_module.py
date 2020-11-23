@@ -29,7 +29,6 @@ class VkUser:
         self.tmp = {}
         self.offset = 0
 
-
     def get_user_info(self, user_id):
         """
         :param user_id: принимает User ID или Короткое название аккаунта VK
@@ -89,8 +88,6 @@ class VkUser:
     def search_dating_user(self, age_from, age_to, sex, city, status):
         """
         Получаем словарь с результатами поиска для дальнейшего просмотра людей
-        :param offset:      параметр отступа, чтобы люди не повторялись при поиске,
-                            для каждого нового пользователя обнуляется
         :param age_from:    возраст, от.
         :param age_to:      возраст, до.
         :param sex:         пол                 (1 — женщина;
