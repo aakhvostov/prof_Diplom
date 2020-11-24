@@ -1,6 +1,14 @@
 from urllib.parse import urlencode
 from requests import get
 import vk_api
+from vk_api.longpoll import VkLongPoll
+from vk_api import VkApi
+from random import randrange
+from json import dumps
+
+group_token = input('Token: ')
+vk = VkApi(token=group_token)
+longpoll = VkLongPoll(vk)
 
 
 def get_token():
@@ -20,10 +28,13 @@ def get_token():
     return ACCESS_TOKEN
 
 
+'958eb5d439726565e9333aa30e50e0f937ee432e927f0dbd541c541887d919a7c56f95c04217915c32008'
+
+
 class VkUser:
 
     def __init__(self):
-        self.token = '958eb5d439726565e9333aa30e50e0f937ee432e927f0dbd541c541887d919a7c56f95c04217915c32008'
+        self.token = get_token()
         self.vk_api = vk_api.VkApi(token=self.token).get_api()
         self.photo_info_dict = {}
         self.tmp = {}
@@ -111,6 +122,81 @@ class VkUser:
         return users_info_dict['items']
 
 
+greeting = {'inline':  None,
+            'one_time': True,
+            'buttons': [
+                [
+                    {
+                        'action': {
+                            'type': 'text',
+                            'label': 'начать поиск'
+                        },
+                        'color': 'positive'
+                    }
+                ],
+                [
+                    {
+                        'action': {
+                            'type': 'text',
+                            'label': 'показать/удалить людей из лайк списка'
+                        },
+                        'color': 'secondary'
+                    }
+                ],
+                [
+                    {
+                        'action': {
+                            'type': 'text',
+                            'label': 'показать/удалить людей из блэк списка'
+                        },
+                        'color': 'secondary'
+                    }
+                ],
+                [
+                    {
+                        'action': {
+                            'type': 'text',
+                            'label': 'выйти'
+                        },
+                        'color': 'secondary'
+                    }
+                ],
+                [
+                    {
+                        'action': {
+                            'type': 'text',
+                            'label': 'удалить и создать все базы данных '
+                        },
+                        'color': 'negative'
+                    }
+                ]
+                        ]
+            }
+
+choose = {}
+
+
+keyboards = {
+    'greeting': greeting,
+    'choose': choose
+}
+
+
+def write_msg(user_id, message):
+    vk.method('messages.send', {'user_id': user_id,
+                                'message': message,
+                                'random_id': randrange(10 ** 7)})
+
+
+def write_msg_greeting(user_id, message):
+    vk.method('messages.send', {'user_id': user_id,
+                                'message': message,
+                                'random_id': randrange(10 ** 7),
+                                'keyboard': dumps(keyboards['greeting'], ensure_ascii=False)})
+
+
+
+
+
 if __name__ == '__main__':
-    # get_token()
     pass

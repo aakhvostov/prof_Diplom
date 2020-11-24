@@ -2,9 +2,11 @@
 # -*- coding: utf-8 -*-
 
 import re
-from vk_module import VkUser
+from vk_module import VkUser, longpoll, write_msg, write_msg_greeting
 from indep_func import get_age, session, engine
 from sql_orm import ORMFunctions, Base, UserVk, DatingUser, UserPhoto, IgnoreUser, SkippedUser, Search
+from vk_api.longpoll import VkEventType
+
 
 orm = ORMFunctions(session)
 
@@ -244,7 +246,24 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    for event in longpoll.listen():
+        user_id = event.user_id
+        if event.type == VkEventType.MESSAGE_NEW:
+            if event.to_me:
+                request = event.text
+                if request == "привет":
+                    write_msg_greeting(event.user_id, 'Привет! Выбери действие')
+                elif "блэк" in request:
+                    write_msg(event.user_id, "Идем в черный список")
+                elif "лайк" in request:
+                    write_msg(event.user_id, "Идем в лайк список")
+                elif request == "пока":
+                    write_msg(event.user_id, "Пока((")
+                elif request == "выйти":
+                    break
+                else:
+                    write_msg_greeting(event.user_id, 'Что будем делать дальше?')
+    # main()
     # проверка отсутствия фоток в профиле
     # print(ORMFunctions(session).is_id_inside_user_vk(13924278))
     # print(ORMFunctions(session).id_and_range_inside_user_vk(1, '30-32'))
