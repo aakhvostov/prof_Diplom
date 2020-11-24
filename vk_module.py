@@ -4,37 +4,34 @@ import vk_api
 from vk_api.longpoll import VkLongPoll
 from vk_api import VkApi
 from random import randrange
-from json import dumps
+import json
 
 group_token = input('Token: ')
 vk = VkApi(token=group_token)
 longpoll = VkLongPoll(vk)
 
 
-def get_token():
-    url = f"https://oauth.vk.com/access_token"
-    params = {
-        "client_id": 7585945,
-        "client_secret": "xVuQdxMEBJQkz937xpeY",
-        "grant_type": "client_credentials",
-        "scope": "friends",
-        "v": 5.126
-    }
-    url_requests = "?".join((url, urlencode(params)))
-    response = get(url_requests)
-    print(url_requests)
-    ACCESS_TOKEN = response.json()["access_token"]
-    print(ACCESS_TOKEN)
-    return ACCESS_TOKEN
-
-
-'958eb5d439726565e9333aa30e50e0f937ee432e927f0dbd541c541887d919a7c56f95c04217915c32008'
+# def get_token():
+#     url = f"https://oauth.vk.com/access_token"
+#     params = {
+#         "client_id": 7585945,
+#         "client_secret": "xVuQdxMEBJQkz937xpeY",
+#         "grant_type": "client_credentials",
+#         "scope": "friends",
+#         "v": 5.126
+#     }
+#     url_requests = "?".join((url, urlencode(params)))
+#     response = get(url_requests)
+#     print(url_requests)
+#     ACCESS_TOKEN = response.json()["access_token"]
+#     print(ACCESS_TOKEN)
+#     return ACCESS_TOKEN
 
 
 class VkUser:
 
     def __init__(self):
-        self.token = get_token()
+        self.token = '958eb5d439726565e9333aa30e50e0f937ee432e927f0dbd541c541887d919a7c56f95c04217915c32008'
         self.vk_api = vk_api.VkApi(token=self.token).get_api()
         self.photo_info_dict = {}
         self.tmp = {}
@@ -122,7 +119,27 @@ class VkUser:
         return users_info_dict['items']
 
 
-greeting = {'inline':  None,
+def get_text_buttons(label, color, payload=""):
+    return {
+        "action": {
+            "type": "text",
+            "label": label,
+            "payload": json.dumps(payload)
+        },
+        "color": color
+    }
+
+greetings = {'inline': None,
+             'one_time': True,
+             'buttons': [
+                     [get_text_buttons('Кнопка 1', 'positive')],
+                     [get_text_buttons('Кнопка 2', 'secondary')],
+                     [get_text_buttons('Кнопка 3', 'secondary')],
+                     [get_text_buttons('Кнопка 4', 'negative')]
+             ]
+             }
+
+greeting = {'inline': None,
             'one_time': True,
             'buttons': [
                 [
@@ -165,20 +182,60 @@ greeting = {'inline':  None,
                     {
                         'action': {
                             'type': 'text',
-                            'label': 'удалить и создать все базы данных '
+                            'label': 'удалить и создать все базы данных'
                         },
                         'color': 'negative'
                     }
                 ]
-                        ]
+            ]
             }
 
-choose = {}
-
+decision = {'inline': True,
+            'one_time': True,
+            'buttons': [
+                [
+                    {
+                        'action': {
+                            'type': 'text',
+                            'label': 'добавить в лайк список'
+                        },
+                        'color': 'positive '
+                    }
+                ],
+                [
+                    {
+                        'action': {
+                            'type': 'text',
+                            'label': 'добавить в черный список'
+                        },
+                        'color': 'secondary'
+                    }
+                ],
+                [
+                    {
+                        'action': {
+                            'type': 'text',
+                            'label': 'пропустить'
+                        },
+                        'color': 'secondary'
+                    }
+                ],
+                [
+                    {
+                        'action': {
+                            'type': 'text',
+                            'label': 'выйти'
+                        },
+                        'color': 'negative'
+                    }
+                ]
+            ]
+            }
 
 keyboards = {
     'greeting': greeting,
-    'choose': choose
+    'decision': decision,
+    'greetings': greetings
 }
 
 
@@ -188,14 +245,11 @@ def write_msg(user_id, message):
                                 'random_id': randrange(10 ** 7)})
 
 
-def write_msg_greeting(user_id, message):
+def write_msg_keyboard(user_id, message, keyboard):
     vk.method('messages.send', {'user_id': user_id,
                                 'message': message,
                                 'random_id': randrange(10 ** 7),
-                                'keyboard': dumps(keyboards['greeting'], ensure_ascii=False)})
-
-
-
+                                'keyboard': json.dumps(keyboards[keyboard], ensure_ascii=False)})
 
 
 if __name__ == '__main__':

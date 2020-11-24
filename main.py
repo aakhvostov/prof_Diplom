@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import re
-from vk_module import VkUser, longpoll, write_msg, write_msg_greeting
+from vk_module import VkUser, longpoll, write_msg, write_msg_keyboard
 from indep_func import get_age, session, engine
 from sql_orm import ORMFunctions, Base, UserVk, DatingUser, UserPhoto, IgnoreUser, SkippedUser, Search
 from vk_api.longpoll import VkEventType
@@ -33,6 +33,8 @@ def get_search_user_info(search_user_id):
         user_city = 'нет данных'
     # добавляем юзера в базу данных
     if not orm.looking_for_user_vk(user_id):
+        user = VkUser(user_id=user_id, user_firstname=user_firstname, user_lastname=user_lastname, user_age=user_age,
+                      user_sex=user_sex, user_city=user_city)
         UserVk().add_user_vk(user_id, user_firstname, user_lastname, user_age, user_sex, user_city)
 
 
@@ -65,8 +67,8 @@ def decision_for_user(users_list, search_id):
     :param search_id: Id записи в таблице Search
     :return: решение куда добавть человека
     """
-    print(f'Всего найдено {len(users_list)} человек\nПриступим к просмотру ;)')
-    print(f'search_id - {search_id}')
+    # print(f'Всего найдено {len(users_list)} человек\nПриступим к просмотру ;)')
+    # print(f'search_id - {search_id}')
     for person in users_list:
         first_name = person['first_name']
         last_name = person['last_name']
@@ -105,13 +107,13 @@ def decision_for_user(users_list, search_id):
     return True
 
 
-def get_range_input(user_id):
+def get_range_input(search_user_id):
     """
     Выводит диапозон поиска согласно данным таблицы User_vk
-    :param user_id:     Id человека ведущего поиск
-    :return:            диапозон поиска
+    :param search_user_id:      Id человека ведущего поиск
+    :return:                    диапозон поиска
     """
-    ranges = orm.show_id_and_range(user_id)
+    ranges = orm.show_id_and_range(search_user_id)
     if len(ranges) == 0:
         print('Ops, похоже Вы еще не производили поиск!\n')
         return None
@@ -128,6 +130,47 @@ def get_range_input(user_id):
 
 
 def main():
+    vk_func = VkUser()
+    for event in longpoll.listen():
+        if event.type == VkEventType.MESSAGE_NEW and event.to_me and event.text:
+            if event.text.lower() == "привет":
+                write_msg_keyboard(event.user_id, 'Привет! Выбери действие', 'greetings')
+
+                for event_1 in longpoll.listen():
+                    if event_1.type == VkEventType.MESSAGE_NEW and event_1.to_me and event_1.text:
+                        if event_1.text == "начать поиск":
+                            get_search_user_info(event_1.user_id)
+
+                            search_details = get_started_data(event_1.user_id)
+                            if search_details:
+                                answer = decision_for_user(vk_func.search_dating_user(*search_details[:5]), search_details[5])
+                                print(answer)
+
+                                    # while True:
+                                    #     next_list = int(input(f'Ops! список закончился, желаете еще поискать половинку?\n'
+                                    #                           f'Введите\n1 - да\n2 - нет\n'))
+                                    #     if next_list == 1:
+                                    #         decision_for_user(vk_func.search_dating_user(*search_details[:5]),
+                                    #                           *search_details[5:])
+                                    #     elif next_list == 2:
+                                    #         break
+                                    #     else:
+                                    #         print('Ввели что-то не то')
+            elif event.text == "показать/удалить людей из лайк списка":
+                write_msg(event.user_id, "Идем в лайк список")
+            elif event.text == "показать/удалить людей из блэк списка":
+                write_msg(event.user_id, "Идем в блэк список")
+            elif event.text == "удалить и создать все базы данных":
+                Base.metadata.drop_all(engine)
+                Base.metadata.create_all(engine)
+                write_msg_keyboard(event.user_id, 'Что будем делать дальше?', 'greeting')
+            elif event.text == "выйти":
+                break
+            else:
+                write_msg_keyboard(event.user_id, 'Извините, не понял Вашего ввода', 'greeting')
+
+
+
     vk_func = VkUser()
     user_id = input('Добро пожаловать в сервис по подбору своей второй половинки\nВведите ваш User_id Вконтакте\n')
     user_id = new_user_id = vk_func.get_user_info(user_id)['id']
@@ -246,24 +289,7 @@ def main():
 
 
 if __name__ == '__main__':
-    for event in longpoll.listen():
-        user_id = event.user_id
-        if event.type == VkEventType.MESSAGE_NEW:
-            if event.to_me:
-                request = event.text
-                if request == "привет":
-                    write_msg_greeting(event.user_id, 'Привет! Выбери действие')
-                elif "блэк" in request:
-                    write_msg(event.user_id, "Идем в черный список")
-                elif "лайк" in request:
-                    write_msg(event.user_id, "Идем в лайк список")
-                elif request == "пока":
-                    write_msg(event.user_id, "Пока((")
-                elif request == "выйти":
-                    break
-                else:
-                    write_msg_greeting(event.user_id, 'Что будем делать дальше?')
-    # main()
+    main()
     # проверка отсутствия фоток в профиле
     # print(ORMFunctions(session).is_id_inside_user_vk(13924278))
     # print(ORMFunctions(session).id_and_range_inside_user_vk(1, '30-32'))
