@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
-from indep_func import Base, session
+from indep_func import Base, session, engine
 
 
 class UserVk(Base):
@@ -35,6 +35,13 @@ class UserVk(Base):
         session.delete(self)
         session.commit()
         print(f'юзер удален из user_vk')
+
+
+class State(Base):
+    __tablename__ = 'state'
+
+    user_id = Column(Integer, ForeignKey('user_vk.user_id'), primary_key=True)
+    state = Column(String)
 
 
 class Search(Base):

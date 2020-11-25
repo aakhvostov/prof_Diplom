@@ -191,7 +191,7 @@ greeting = {'inline': None,
             }
 
 decision = {'inline': True,
-            'one_time': True,
+            # 'one_time': False,
             'buttons': [
                 [
                     {

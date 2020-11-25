@@ -7,7 +7,7 @@ from datetime import date
 
 Base = declarative_base()
 DSN = 'postgres://nelot:netology@localhost:5432/netology'
-engine = create_engine(DSN)
+engine = create_engine(DSN, echo=True)
 Session = sessionmaker(bind=engine)
 session = Session()
 

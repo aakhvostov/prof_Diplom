@@ -4,9 +4,8 @@
 import re
 from vk_module import VkUser, longpoll, write_msg, write_msg_keyboard
 from indep_func import get_age, session, engine
-from sql_orm import ORMFunctions, Base, UserVk, DatingUser, UserPhoto, IgnoreUser, SkippedUser, Search
+from sql_orm import ORMFunctions, Base, UserVk, State, DatingUser, UserPhoto, IgnoreUser, SkippedUser, Search
 from vk_api.longpoll import VkEventType
-
 
 orm = ORMFunctions(session)
 
@@ -17,6 +16,7 @@ def get_search_user_info(search_user_id):
     :param search_user_id: Id человека ведущего поиск
     :return:
     """
+
     user_info = VkUser().get_user_info(search_user_id)
     user_id = user_info['id']
     user_firstname = user_info['first_name']
@@ -33,9 +33,17 @@ def get_search_user_info(search_user_id):
         user_city = 'нет данных'
     # добавляем юзера в базу данных
     if not orm.looking_for_user_vk(user_id):
-        user = VkUser(user_id=user_id, user_firstname=user_firstname, user_lastname=user_lastname, user_age=user_age,
-                      user_sex=user_sex, user_city=user_city)
-        UserVk().add_user_vk(user_id, user_firstname, user_lastname, user_age, user_sex, user_city)
+        user = UserVk(user_id=user_id, user_firstname=user_firstname, user_lastname=user_lastname,
+                      user_age=user_age, user_sex=user_sex, user_city=user_city)
+        session.add(user)
+        session.commit()
+        state = State(user_id=user_id, state='Initial')
+        session.add(state)
+        session.commit()
+        return user, state
+    else:
+        for user, state in session.query(UserVk, State).filter_by(user_id=user_id).all():
+            return user, state
 
 
 def get_started_data(search_user_id):
@@ -67,8 +75,6 @@ def decision_for_user(users_list, search_id):
     :param search_id: Id записи в таблице Search
     :return: решение куда добавть человека
     """
-    # print(f'Всего найдено {len(users_list)} человек\nПриступим к просмотру ;)')
-    # print(f'search_id - {search_id}')
     for person in users_list:
         first_name = person['first_name']
         last_name = person['last_name']
@@ -133,159 +139,176 @@ def main():
     vk_func = VkUser()
     for event in longpoll.listen():
         if event.type == VkEventType.MESSAGE_NEW and event.to_me and event.text:
-            if event.text.lower() == "привет":
-                write_msg_keyboard(event.user_id, 'Привет! Выбери действие', 'greetings')
-
-                for event_1 in longpoll.listen():
-                    if event_1.type == VkEventType.MESSAGE_NEW and event_1.to_me and event_1.text:
-                        if event_1.text == "начать поиск":
-                            get_search_user_info(event_1.user_id)
-
-                            search_details = get_started_data(event_1.user_id)
-                            if search_details:
-                                answer = decision_for_user(vk_func.search_dating_user(*search_details[:5]), search_details[5])
-                                print(answer)
-
-                                    # while True:
-                                    #     next_list = int(input(f'Ops! список закончился, желаете еще поискать половинку?\n'
-                                    #                           f'Введите\n1 - да\n2 - нет\n'))
-                                    #     if next_list == 1:
-                                    #         decision_for_user(vk_func.search_dating_user(*search_details[:5]),
-                                    #                           *search_details[5:])
-                                    #     elif next_list == 2:
-                                    #         break
-                                    #     else:
-                                    #         print('Ввели что-то не то')
-            elif event.text == "показать/удалить людей из лайк списка":
-                write_msg(event.user_id, "Идем в лайк список")
-            elif event.text == "показать/удалить людей из блэк списка":
-                write_msg(event.user_id, "Идем в блэк список")
-            elif event.text == "удалить и создать все базы данных":
-                Base.metadata.drop_all(engine)
-                Base.metadata.create_all(engine)
-                write_msg_keyboard(event.user_id, 'Что будем делать дальше?', 'greeting')
-            elif event.text == "выйти":
+            user_state = get_search_user_info(event.user_id)
+            print(user_state[1].state)
+            if user_state[1].state == 'Initial':
+                write_msg_keyboard(event.user_id, 'Привет! Выбери действие', 'greeting')
+                if event.text.lower() == "начать поиск":
+                    write_msg_keyboard(event.user_id, 'ура, начали поиск', 'greetings')
+                    search_details = get_started_data(event.user_id)
+            elif event.text.lower() == "показать/удалить людей из лайк списка":
+                pass
+            elif event.text.lower() == "показать/удалить людей из лайк списка":
                 break
-            else:
-                write_msg_keyboard(event.user_id, 'Извините, не понял Вашего ввода', 'greeting')
-
-
-
-    vk_func = VkUser()
-    user_id = input('Добро пожаловать в сервис по подбору своей второй половинки\nВведите ваш User_id Вконтакте\n')
-    user_id = new_user_id = vk_func.get_user_info(user_id)['id']
-    while True:
-        if user_id != new_user_id:
-            user_id = new_user_id
-            vk_func = VkUser()
-        user_id = vk_func.get_user_info(user_id)['id']
-        user_input = int(input('Что вы хотели бы сделать?\n'
-                               '1 - начать новый поиск\n'
-                               '2 - показать понравившихся людей\n'
-                               '3 - удалить из списка понравившихся людей человека\n'
-                               '4 - посмотреть черный спискок\n'
-                               '5 - удалить из черного списка человека\n'
-                               '6 - сменить Vk Id\n'
-                               '7 - выйти\n'
-                               '911 - удалить все базы данных и создать заново\n'))
-        if user_input == 1:
-            # range_input = get_range_input(user_id)
-            # # проверка наличия уже происходивших поисков и продолжения их
-            # if range_input == 'неверное значение':
-            #     print('Вы выбрали неверный диапозон')
-            #     continue
-            # elif range_input is None:
-            #     get_search_user_info(user_id)
-            #     search_details = get_started_data()
-            # elif range_input is not None:
-            #     vk_object_dict = orm.get_vk_users(user_id, range_input)
-            #     age_pattern = re.compile(r'(\d\d?)-(\d\d?\d?)')
-            #     sex = vk_object_dict.sex
-            #     city = vk_func.get_city_id(vk_object_dict.user_city)
-            #     search_range = vk_object_dict.search_range
-            #     age_from = age_pattern.sub(r"\1", search_range)
-            #     age_to = age_pattern.sub(r"\2", search_range)
-            #     status = vk_object_dict.status
-            #     search_details = (age_from, age_to, sex, city, status, user_id, search_range)
-            # else:
-            get_search_user_info(user_id)
-            search_details = get_started_data(user_id)
-            if search_details:
-                answer = decision_for_user(vk_func.search_dating_user(*search_details[:5]), search_details[5])
-                if answer:
-                    while True:
-                        next_list = int(input(f'Ops! список закончился, желаете еще поискать половинку?\n'
-                                              f'Введите\n1 - да\n2 - нет\n'))
-                        if next_list == 1:
-                            decision_for_user(vk_func.search_dating_user(*search_details[:5]), *search_details[5:])
-                        elif next_list == 2:
-                            break
-                        else:
-                            print('Ввели что-то не то')
-        elif user_input == 2:
-            range_input = get_range_input(user_id)
-            dating_func_dict = orm.get_dating_users(user_id, range_input)
-            dating_dict = dating_func_dict[0]
-            if len(dating_dict) == 0:
-                print('Ops! смотреть некого\n')
-                continue
-            for user_dat_id in dating_dict.values():
-                print(f'https://vk.com/id{user_dat_id}')
-            print()
-        elif user_input == 3:
-            range_input = get_range_input(user_id)
-            dating_func_dict = orm.get_dating_users(user_id, range_input)
-            dating_dict = dating_func_dict[0]
-            if len(dating_dict) == 0:
-                print('Ops! удалять некого\n')
-                continue
-            dating_objects = dating_func_dict[1]
-            for key, url in enumerate(dating_dict.values()):
-                print(f'{key} - https://vk.com/id{url}')
-            ans = int(input('Кого хотите удалить?\nили введите 911 для отмены\n'))
-            if ans == 911:
-                continue
-            elif ans >= 0:
-                dating_objects[ans].remove_dating_user()
-            else:
-                print('Неверный ввод')
+            elif user_state[1].state == 'Hello':
                 pass
-        elif user_input == 4:
-            range_input = get_range_input(user_id)
-            ignore_func_dict = orm.get_ignore_users(user_id, range_input)
-            ignore_dict = ignore_func_dict[0]
-            if len(ignore_dict) == 0:
-                print('Ops! смотреть некого\n')
-                continue
-            for user_ign_id in ignore_dict.values():
-                print(f'https://vk.com/id{user_ign_id}')
-            print()
-        elif user_input == 5:
-            range_input = get_range_input(user_id)
-            ignore_func_dict = orm.get_ignore_users(user_id, range_input)
-            ignore_dict = ignore_func_dict[0]
-            if len(ignore_dict) == 0:
-                print('Ops! удалять некого\n')
-                continue
-            ignore_objects = ignore_func_dict[1]
-            for key, url in enumerate(ignore_dict.values()):
-                print(f'{key} - https://vk.com/id{url}')
-            ans = int(input('Кого хотите удалить?\nили введите 911 для отмены\n'))
-            if ans in ignore_dict:
-                ignore_objects[ans].remove_ignore_user()
-            else:
-                print('Неверный ввод')
+            elif user_state[1].state == 'Select city':
                 pass
-        elif user_input == 6:
-            new_user_id = input('Введите новый id\n')
-            new_user_id = vk_func.get_user_info(new_user_id)['id']
-        elif user_input == 7:
-            break
-        elif user_input == 911:
-            Base.metadata.drop_all(engine)
-            Base.metadata.create_all(engine)
-        else:
-            break
+            elif user_state[1].state == 'Select sex':
+                pass
+            elif user_state[1].state == 'Select age':
+                pass
+                    #
+                    #
+                    # if event.text.lower() == "начать поиск":
+                    #     write_msg_keyboard(event.user_id, 'ура, начали поиск', 'decision')
+                    #     search_details = get_started_data(event.user_id)
+                    #     if search_details:
+                    #         answer = decision_for_user(vk_func.search_dating_user(*search_details[:5]),
+                    #                                    search_details[5])
+                    #         print(answer)
+
+                            # while True:
+                            #     next_list = int(input(f'Ops! список закончился, желаете еще поискать половинку?\n'
+                            #                           f'Введите\n1 - да\n2 - нет\n'))
+                            #     if next_list == 1:
+                            #         decision_for_user(vk_func.search_dating_user(*search_details[:5]),
+                            #                           *search_details[5:])
+                            #     elif next_list == 2:
+                            #         break
+                            #     else:
+                            #         print('Ввели что-то не то')
+    #         elif event.text == "показать/удалить людей из лайк списка":
+    #             write_msg(event.user_id, "Идем в лайк список")
+    #         elif event.text == "показать/удалить людей из блэк списка":
+    #             write_msg(event.user_id, "Идем в блэк список")
+    #         elif event.text == "удалить и создать все базы данных":
+    #             Base.metadata.drop_all(engine)
+    #             Base.metadata.create_all(engine)
+    #             write_msg_keyboard(event.user_id, 'Что будем делать дальше?', 'greeting')
+    #         elif event.text == "выйти":
+    #             break
+    #         else:
+    #             write_msg_keyboard(event.user_id, 'Извините, не понял Вашего ввода', 'greeting')
+    #
+    #
+    #
+    # vk_func = VkUser()
+    # user_id = input('Добро пожаловать в сервис по подбору своей второй половинки\nВведите ваш User_id Вконтакте\n')
+    # user_id = new_user_id = vk_func.get_user_info(user_id)['id']
+    # while True:
+    #     if user_id != new_user_id:
+    #         user_id = new_user_id
+    #         vk_func = VkUser()
+    #     user_id = vk_func.get_user_info(user_id)['id']
+    #     user_input = int(input('Что вы хотели бы сделать?\n'
+    #                            '1 - начать новый поиск\n'
+    #                            '2 - показать понравившихся людей\n'
+    #                            '3 - удалить из списка понравившихся людей человека\n'
+    #                            '4 - посмотреть черный спискок\n'
+    #                            '5 - удалить из черного списка человека\n'
+    #                            '6 - сменить Vk Id\n'
+    #                            '7 - выйти\n'
+    #                            '911 - удалить все базы данных и создать заново\n'))
+    #     if user_input == 1:
+    #         # range_input = get_range_input(user_id)
+    #         # # проверка наличия уже происходивших поисков и продолжения их
+    #         # if range_input == 'неверное значение':
+    #         #     print('Вы выбрали неверный диапозон')
+    #         #     continue
+    #         # elif range_input is None:
+    #         #     get_search_user_info(user_id)
+    #         #     search_details = get_started_data()
+    #         # elif range_input is not None:
+    #         #     vk_object_dict = orm.get_vk_users(user_id, range_input)
+    #         #     age_pattern = re.compile(r'(\d\d?)-(\d\d?\d?)')
+    #         #     sex = vk_object_dict.sex
+    #         #     city = vk_func.get_city_id(vk_object_dict.user_city)
+    #         #     search_range = vk_object_dict.search_range
+    #         #     age_from = age_pattern.sub(r"\1", search_range)
+    #         #     age_to = age_pattern.sub(r"\2", search_range)
+    #         #     status = vk_object_dict.status
+    #         #     search_details = (age_from, age_to, sex, city, status, user_id, search_range)
+    #         # else:
+    #         get_search_user_info(user_id)
+    #         search_details = get_started_data(user_id)
+    #         if search_details:
+    #             answer = decision_for_user(vk_func.search_dating_user(*search_details[:5]), search_details[5])
+    #             if answer:
+    #                 while True:
+    #                     next_list = int(input(f'Ops! список закончился, желаете еще поискать половинку?\n'
+    #                                           f'Введите\n1 - да\n2 - нет\n'))
+    #                     if next_list == 1:
+    #                         decision_for_user(vk_func.search_dating_user(*search_details[:5]), *search_details[5:])
+    #                     elif next_list == 2:
+    #                         break
+    #                     else:
+    #                         print('Ввели что-то не то')
+    #     elif user_input == 2:
+    #         range_input = get_range_input(user_id)
+    #         dating_func_dict = orm.get_dating_users(user_id, range_input)
+    #         dating_dict = dating_func_dict[0]
+    #         if len(dating_dict) == 0:
+    #             print('Ops! смотреть некого\n')
+    #             continue
+    #         for user_dat_id in dating_dict.values():
+    #             print(f'https://vk.com/id{user_dat_id}')
+    #         print()
+    #     elif user_input == 3:
+    #         range_input = get_range_input(user_id)
+    #         dating_func_dict = orm.get_dating_users(user_id, range_input)
+    #         dating_dict = dating_func_dict[0]
+    #         if len(dating_dict) == 0:
+    #             print('Ops! удалять некого\n')
+    #             continue
+    #         dating_objects = dating_func_dict[1]
+    #         for key, url in enumerate(dating_dict.values()):
+    #             print(f'{key} - https://vk.com/id{url}')
+    #         ans = int(input('Кого хотите удалить?\nили введите 911 для отмены\n'))
+    #         if ans == 911:
+    #             continue
+    #         elif ans >= 0:
+    #             dating_objects[ans].remove_dating_user()
+    #         else:
+    #             print('Неверный ввод')
+    #             pass
+    #     elif user_input == 4:
+    #         range_input = get_range_input(user_id)
+    #         ignore_func_dict = orm.get_ignore_users(user_id, range_input)
+    #         ignore_dict = ignore_func_dict[0]
+    #         if len(ignore_dict) == 0:
+    #             print('Ops! смотреть некого\n')
+    #             continue
+    #         for user_ign_id in ignore_dict.values():
+    #             print(f'https://vk.com/id{user_ign_id}')
+    #         print()
+    #     elif user_input == 5:
+    #         range_input = get_range_input(user_id)
+    #         ignore_func_dict = orm.get_ignore_users(user_id, range_input)
+    #         ignore_dict = ignore_func_dict[0]
+    #         if len(ignore_dict) == 0:
+    #             print('Ops! удалять некого\n')
+    #             continue
+    #         ignore_objects = ignore_func_dict[1]
+    #         for key, url in enumerate(ignore_dict.values()):
+    #             print(f'{key} - https://vk.com/id{url}')
+    #         ans = int(input('Кого хотите удалить?\nили введите 911 для отмены\n'))
+    #         if ans in ignore_dict:
+    #             ignore_objects[ans].remove_ignore_user()
+    #         else:
+    #             print('Неверный ввод')
+    #             pass
+    #     elif user_input == 6:
+    #         new_user_id = input('Введите новый id\n')
+    #         new_user_id = vk_func.get_user_info(new_user_id)['id']
+    #     elif user_input == 7:
+    #         break
+    #     elif user_input == 911:
+    #         Base.metadata.drop_all(engine)
+    #         Base.metadata.create_all(engine)
+    #     else:
+    #         break
+    #
 
 
 if __name__ == '__main__':
