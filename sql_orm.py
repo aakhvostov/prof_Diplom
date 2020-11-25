@@ -302,8 +302,8 @@ class ORMFunctions:
 
 
 if __name__ == '__main__':
-    # Base.metadata.drop_all(engine)
-    # Base.metadata.create_all(engine)
+    Base.metadata.drop_all(engine)
+    Base.metadata.create_all(engine)
     # search = session.query(Search).filter(Search.user_id == 13924278).one()
     # print(search)
     pass
