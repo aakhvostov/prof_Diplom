@@ -1,14 +1,20 @@
 from urllib.parse import urlencode
 from requests import get
+# from vk_api.longpoll import VkEventType
+# from main import get_search_user_info
 import vk_api
+from vk_api.keyboard import VkKeyboard
 from vk_api.longpoll import VkLongPoll
 from vk_api import VkApi
 from random import randrange
 import json
 
-group_token = input('Token: ')
+# group_token = input('Token: ')
+group_token = 'fe40651e2f644afbf32552f6fabc7d471bbab8a43fffd2b08d62d63e955977892f8f1a468018b8f2ee2f5'
 vk = VkApi(token=group_token)
 longpoll = VkLongPoll(vk)
+
+decision_key = VkKeyboard(one_time=True)
 
 
 # def get_token():
@@ -112,10 +118,10 @@ class VkUser:
                                                 0 — не указано)
         :return:            список словарей подходящих Юзеров
         """
-        users_info_dict = self.vk_api.users.search(offset=self.offset, count=7, age_from=age_from, age_to=age_to,
+        users_info_dict = self.vk_api.users.search(offset=self.offset, count=1, age_from=age_from, age_to=age_to,
                                                    sex=sex, city=self.get_city_id(city), status=status,
                                                    fields='bdate')
-        self.offset += 7
+        self.offset += 1
         return users_info_dict['items']
 
 
@@ -129,113 +135,30 @@ def get_text_buttons(label, color, payload=""):
         "color": color
     }
 
-greetings = {'inline': None,
-             'one_time': True,
-             'buttons': [
-                     [get_text_buttons('Кнопка 1', 'positive')],
-                     [get_text_buttons('Кнопка 2', 'secondary')],
-                     [get_text_buttons('Кнопка 3', 'secondary')],
-                     [get_text_buttons('Кнопка 4', 'negative')]
-             ]
-             }
 
-greeting = {'inline': None,
-            'one_time': True,
+decision = {'inline': True,
             'buttons': [
                 [
-                    {
-                        'action': {
-                            'type': 'text',
-                            'label': 'начать поиск'
-                        },
-                        'color': 'positive'
-                    }
+                    get_text_buttons('лайк', 'positive'),
+                    get_text_buttons('крестик', 'secondary'),
+                    get_text_buttons('пропуск', 'secondary')
                 ],
-                [
-                    {
-                        'action': {
-                            'type': 'text',
-                            'label': 'показать/удалить людей из лайк списка'
-                        },
-                        'color': 'secondary'
-                    }
-                ],
-                [
-                    {
-                        'action': {
-                            'type': 'text',
-                            'label': 'показать/удалить людей из блэк списка'
-                        },
-                        'color': 'secondary'
-                    }
-                ],
-                [
-                    {
-                        'action': {
-                            'type': 'text',
-                            'label': 'выйти'
-                        },
-                        'color': 'secondary'
-                    }
-                ],
-                [
-                    {
-                        'action': {
-                            'type': 'text',
-                            'label': 'удалить и создать все базы данных'
-                        },
-                        'color': 'negative'
-                    }
-                ]
+                [get_text_buttons('выход', 'negative')]
             ]
             }
 
-decision = {'inline': True,
-            # 'one_time': False,
+greeting = {'one_time': True,
             'buttons': [
-                [
-                    {
-                        'action': {
-                            'type': 'text',
-                            'label': 'добавить в лайк список'
-                        },
-                        'color': 'positive '
-                    }
-                ],
-                [
-                    {
-                        'action': {
-                            'type': 'text',
-                            'label': 'добавить в черный список'
-                        },
-                        'color': 'secondary'
-                    }
-                ],
-                [
-                    {
-                        'action': {
-                            'type': 'text',
-                            'label': 'пропустить'
-                        },
-                        'color': 'secondary'
-                    }
-                ],
-                [
-                    {
-                        'action': {
-                            'type': 'text',
-                            'label': 'выйти'
-                        },
-                        'color': 'negative'
-                    }
-                ]
+                [get_text_buttons('начать поиск', 'primary')],
+                [get_text_buttons('показать/удалить людей из лайк списка', 'positive')],
+                [get_text_buttons('показать/удалить людей из блэк списка', 'secondary')],
+                [get_text_buttons('выйти', 'negative')],
             ]
             }
 
 keyboards = {
     'greeting': greeting,
     'decision': decision,
-    'greetings': greetings
 }
 
 

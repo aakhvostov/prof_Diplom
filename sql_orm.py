@@ -45,27 +45,25 @@ class State(Base):
 
 
 class Search(Base):
+
     __tablename__ = 'search'
 
     search_id = Column(Integer, primary_key=True)
-    search_range = Column(String(15))
-    search_sex = Column(Integer)
     search_city = Column(String(40))
+    search_sex = Column(Integer)
     search_relation = Column(Integer)
+    search_from = Column(Integer)
+    search_to = Column(Integer)
+
     user_id = Column(Integer, ForeignKey('user_vk.user_id'))
 
-    def add_search(self, search_range, search_sex, search_city, search_relation, user_id):
+    def add_search(self, user_id):
         """
         Добавляет человека в базу таблицу user_vk
         """
-        self.search_range = search_range
-        self.search_sex = search_sex
-        self.search_city = search_city
-        self.search_relation = search_relation
         self.user_id = user_id
         session.add(self)
         session.commit()
-        print(f'диапозон поиска добавлен\n')
         return self.search_id
 
 
@@ -306,15 +304,6 @@ class ORMFunctions:
 if __name__ == '__main__':
     # Base.metadata.drop_all(engine)
     # Base.metadata.create_all(engine)
-    # print(IgnoreUser().add_ignore_user(131323, 1))
-    # print(new_used.show_dating_users(13924278, '38-40')[0])
-    # print()
-    # print(new_used.show_dating_users(13924278, '38-40')[1])
-    # print(new_used.find_dating_user_photo(250183789, 13924278, '32-39'))
-    # print(ORMFunctions(session).is_id_and_range_inside_user_vk(13924278, '38-40'))
-    # new_used.show_id_and_range(13924278)
-    # new_used.select_photo(143041215, 1582074)
-    # print(new_used.is_inside_ignore_dating_skipped(45269508, 13924278, '30-31'))
-    # print(new_used.show_dating_users(13924278, 1))
-    # new_used.is_inside_ignore_dating_skipped(18349823)
+    # search = session.query(Search).filter(Search.user_id == 13924278).one()
+    # print(search)
     pass
