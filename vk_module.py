@@ -1,37 +1,4 @@
-from urllib.parse import urlencode
-from requests import get
-# from vk_api.longpoll import VkEventType
-# from main import get_search_user_info
 import vk_api
-from vk_api.keyboard import VkKeyboard
-from vk_api.longpoll import VkLongPoll
-from vk_api import VkApi
-from random import randrange
-import json
-
-group_token = input('Token: ')
-# group_token = ''
-vk = VkApi(token=group_token)
-longpoll = VkLongPoll(vk)
-
-decision_key = VkKeyboard(one_time=True)
-
-
-# def get_token():
-#     url = f"https://oauth.vk.com/access_token"
-#     params = {
-#         "client_id": 7585945,
-#         "client_secret": "xVuQdxMEBJQkz937xpeY",
-#         "grant_type": "client_credentials",
-#         "scope": "friends",
-#         "v": 5.126
-#     }
-#     url_requests = "?".join((url, urlencode(params)))
-#     response = get(url_requests)
-#     print(url_requests)
-#     ACCESS_TOKEN = response.json()["access_token"]
-#     print(ACCESS_TOKEN)
-#     return ACCESS_TOKEN
 
 
 class VkUser:
@@ -126,54 +93,21 @@ class VkUser:
         return self.users_info_dict['items']
 
 
-def get_text_buttons(label, color, payload=""):
-    return {
-        "action": {
-            "type": "text",
-            "label": label,
-            "payload": json.dumps(payload)
-        },
-        "color": color
-    }
-
-
-decision = {'inline': True,
-            'buttons': [
-                [
-                    get_text_buttons('лайк', 'positive'),
-                    get_text_buttons('крестик', 'secondary'),
-                    get_text_buttons('пропуск', 'secondary')
-                ],
-                [get_text_buttons('выход', 'negative')]
-            ]
-            }
-
-greeting = {'one_time': True,
-            'buttons': [
-                [get_text_buttons('начать поиск', 'primary')],
-                [get_text_buttons('показать/удалить людей из лайк списка', 'positive')],
-                [get_text_buttons('показать/удалить людей из блэк списка', 'secondary')],
-                [get_text_buttons('выйти', 'negative')],
-            ]
-            }
-
-keyboards = {
-    'greeting': greeting,
-    'decision': decision,
-}
-
-
-def write_msg(user_id, message):
-    vk.method('messages.send', {'user_id': user_id,
-                                'message': message,
-                                'random_id': randrange(10 ** 7)})
-
-
-def write_msg_keyboard(user_id, message, keyboard):
-    vk.method('messages.send', {'user_id': user_id,
-                                'message': message,
-                                'random_id': randrange(10 ** 7),
-                                'keyboard': json.dumps(keyboards[keyboard], ensure_ascii=False)})
+# def get_token():
+#     url = f"https://oauth.vk.com/access_token"
+#     params = {
+#         "client_id": 7585945,
+#         "client_secret": "xVuQdxMEBJQkz937xpeY",
+#         "grant_type": "client_credentials",
+#         "scope": "friends",
+#         "v": 5.126
+#     }
+#     url_requests = "?".join((url, urlencode(params)))
+#     response = get(url_requests)
+#     print(url_requests)
+#     ACCESS_TOKEN = response.json()["access_token"]
+#     print(ACCESS_TOKEN)
+#     return ACCESS_TOKEN
 
 
 if __name__ == '__main__':
