@@ -96,145 +96,159 @@ def decision_for_user(users_list, search_id):
 
 
 def main():
-    vk_func = VkUser()
+    current_user_vk = VkUser()
+    count = 0           # поставить SELF
     users_info_dict = {}
-    count = 0
     old_user_id = ""
     for event in longpoll.listen():
         if event.type == VkEventType.MESSAGE_NEW:
-            if old_user_id != event.user_id:
-                count = 0
-                vk_func = VkUser()
-                users_info_dict = {}
-                old_user_id = event.user_id
-            else:
-                if event.to_me and event.text:
-                    user_object, state_object, search_object = get_search_user_info(old_user_id)
-                    print(f'state after = {state_object.state}')
-                    if state_object.state == 'Hello':
+            old_user_id = event.user_id
+            if event.to_me and event.text:
+                user_object, state_object, search_object = get_search_user_info(old_user_id)
+                print(f'state after = {state_object.state}')
+                if state_object.state == 'Hello':
+                    if event.text.lower() == "начать поиск":
+                        # setattr(state_object, "state", "Initial")
+                        # session.commit()
+                        # continue
+                        pass
+                    elif event.text.lower() == "показать/удалить людей из лайк списка":
+                        pass
+                    elif event.text.lower() == "показать/удалить людей из блэк списка":
+                        pass
+                    elif event.text.lower() == "выйти":
+                        break
+                    else:
                         write_msg_keyboard(old_user_id, 'Привет! Выбери действие', 'greeting')
-                        if event.text.lower() == "начать поиск":
-                            setattr(state_object, "state", "Initial")
-                            session.commit()
-                        elif event.text.lower() == "показать/удалить людей из лайк списка":
-                            pass
-                        elif event.text.lower() == "показать/удалить людей из блэк списка":
-                            pass
-                        elif event.text.lower() == "выйти":
-                            break
-                    elif state_object.state == 'Initial':
+                        setattr(state_object, "state", "Initial")
+                        session.commit()
+                        continue
+                elif state_object.state == 'Initial':
+                    if event.text.lower() == "начать поиск":
                         try:
                             setattr(state_object, "state", "City")
                             session.commit()
                             write_msg(old_user_id, 'Введите город')
+                            continue
                         except ValueError:
                             setattr(state_object, "state", "Error_Initial")
                             session.commit()
                         except IndexError:
                             setattr(state_object, "state", "Error_Initial")
                             session.commit()
-                    elif state_object.state == 'Error_Initial':
+                        continue
+                    elif event.text.lower() == "показать/удалить людей из лайк списка":
                         pass
-                    elif state_object.state == 'City':
-                        try:
-                            city_name = vk_func.get_city_name(vk_func.get_city_id(event.text))[0]['title']
-                            setattr(search_object, "search_city", city_name)
-                            setattr(state_object, "state", "Sex")
-                            session.commit()
-                            write_msg(old_user_id, 'Введите пол:\n1 - женщина\n2 - мужчина')
-                        except IndexError:
-                            setattr(state_object, "state", "Error_City")
-                            session.commit()
-                    elif state_object.state == 'Error_City':
+                    elif event.text.lower() == "показать/удалить людей из блэк списка":
                         pass
-                    elif state_object.state == 'Sex':
-                        try:
-                            sex = event.text
-                            setattr(search_object, "search_sex", sex)
-                            setattr(state_object, "state", "Relation")
-                            session.commit()
-                            write_msg(old_user_id,
-                                      'Введите семейное положение\n1 — не женат/не замужем\n2 — есть друг/есть подруга\n'
-                                      '3 — помолвлен/помолвлена\n4 — женат/замужем\n5 — всё сложно\n6 — в активном поиске\n'
-                                      '7 — влюблён/влюблена\n8 — в гражданском браке\n0 — не указано\n')
-                        except ValueError:
-                            setattr(state_object, "state", "Error_Sex")
-                            session.commit()
-                    elif state_object.state == 'Error_Sex':
+                    elif event.text.lower() == "выйти":
+                        break
+                    else:
                         pass
-                    elif state_object.state == 'Relation':
-                        try:
-                            status = int(event.text)
-                            setattr(search_object, "search_relation", status)
-                            setattr(state_object, "state", "Range")
-                            write_msg(old_user_id, 'Введите диапозон поиска ОТ и ДО (через пробел или -)')
-                        except ValueError:
-                            setattr(state_object, "state", "Error_Relation")
+                elif state_object.state == 'Error_Initial':
+                    pass
+                elif state_object.state == 'City':
+                    try:
+                        city_name = current_user_vk.get_city_name(current_user_vk.get_city_id(event.text))[0]['title']
+                        setattr(search_object, "search_city", city_name)
+                        setattr(state_object, "state", "Sex")
+                        session.commit()
+                        write_msg(old_user_id, 'Введите пол:\n1 - женщина\n2 - мужчина')
+                        continue
+                    except IndexError:
+                        setattr(state_object, "state", "Error_City")
+                        session.commit()
+                elif state_object.state == 'Error_City':
+                    pass
+                elif state_object.state == 'Sex':
+                    try:
+                        sex = int(event.text)
+                        setattr(search_object, "search_sex", sex)
+                        setattr(state_object, "state", "Relation")
+                        session.commit()
+                        write_msg(old_user_id,
+                                  'Введите семейное положение\n1 — не женат/не замужем\n2 — есть друг/есть подруга\n'
+                                  '3 — помолвлен/помолвлена\n4 — женат/замужем\n5 — всё сложно\n6 — в активном поиске\n'
+                                  '7 — влюблён/влюблена\n8 — в гражданском браке\n0 — не указано\n')
+                        continue
+                    except ValueError:
+                        setattr(state_object, "state", "Error_Sex")
+                        session.commit()
+                elif state_object.state == 'Error_Sex':
+                    pass
+                elif state_object.state == 'Relation':
+                    try:
+                        status = int(event.text)
+                        setattr(search_object, "search_relation", status)
+                        setattr(state_object, "state", "Range")
+                        write_msg(old_user_id, 'Введите диапозон поиска ОТ и ДО (через пробел или -)')
+                        continue
+                    except ValueError:
+                        setattr(state_object, "state", "Error_Relation")
+                        session.commit()
+                elif state_object.state == 'Error_Relation':
+                    pass
+                elif state_object.state == 'Range':
+                    try:
+                        age_pattern = re.compile(r'(\d\d?)[ -]+(\d\d?)')
+                        age_from = int(age_pattern.sub(r"\1", event.text))
+                        age_to = int(age_pattern.sub(r"\2", event.text))
+                        if age_to - age_from > 0:
+                            setattr(search_object, "search_from", age_from)
+                            setattr(search_object, "search_to", age_to)
+                            setattr(state_object, "state", "Decision")
                             session.commit()
-                    elif state_object.state == 'Error_Relation':
-                        pass
-                    elif state_object.state == 'Range':
-                        try:
-                            age_pattern = re.compile(r'(\d\d?)[ -]+(\d\d?)')
-                            age_from = int(age_pattern.sub(r"\1", event.text))
-                            age_to = int(age_pattern.sub(r"\2", event.text))
-                            if age_to - age_from > 0:
-                                setattr(search_object, "search_from", age_from)
-                                setattr(search_object, "search_to", age_to)
-                                setattr(state_object, "state", "Decision")
-                                session.commit()
-                                print(f'state inside Range - {state_object.state}')
-                                age_from = search_object.search_from
-                                age_to = search_object.search_to
-                                sex = search_object.search_sex
-                                city_name = search_object.search_city
-                                status = search_object.search_relation
-                                users_info_dict = vk_func.search_dating_user(age_from, age_to, sex, city_name, status)
-                                write_msg_keyboard(old_user_id, 'Выберите действие', 'decision')
-                            else:
-                                setattr(state_object, "state", "Error_Range")
-                                session.commit()
-                        except ValueError:
+                            print(f'state inside Range - {state_object.state}')
+                            age_from = search_object.search_from
+                            age_to = search_object.search_to
+                            sex = search_object.search_sex
+                            city_name = search_object.search_city
+                            status = search_object.search_relation
+                            users_info_dict = current_user_vk.search_dating_user(age_from, age_to, sex, city_name, status)
+                            continue
+                        else:
                             setattr(state_object, "state", "Error_Range")
                             session.commit()
-                    elif state_object.state == 'Error_Range':
-                        pass
-                    elif state_object.state == 'Decision':
-                        setattr(state_object, "state", "Answer")
+                    except ValueError:
+                        setattr(state_object, "state", "Error_Range")
                         session.commit()
-                        person = users_info_dict[count]
+                elif state_object.state == 'Error_Range':
+                    pass
+                elif state_object.state == 'Decision':
+                    person = users_info_dict[count]
+                    user_dating_id = person['id']
+                    # проверка наличия найденного Id в таблицах
+                    if not orm.is_inside_ignore_dating_skipped(user_dating_id, old_user_id):
                         first_name = person['first_name']
                         last_name = person['last_name']
-                        user_dating_id = person['id']
-                        try:
-                            age = person['bdate']
-                            age = get_age(age)
-                        except KeyError:
-                            age = 'нет данных'
-                        # проверка наличия найденного Id в таблицах
-                        if not orm.is_inside_ignore_dating_skipped(user_dating_id, old_user_id):
-                            link = VkUser().get_users_best_photos(user_dating_id)
-                            write_msg(old_user_id, f'{first_name} {last_name} - {link}\n')
-                            write_msg_keyboard(old_user_id, 'Выберите действие', 'decision')
-                        else:
-                            pass
-                    elif state_object.state == 'Answer':
-                        if event.text == "лайк":
-                            setattr(state_object, "state", "Decision")
-                            session.commit()
-                            count += 1
-                            print(f'count = {count}')
-                        elif event.text == "крестик":
-                            setattr(state_object, "state", "Decision")
-                            session.commit()
-                            count += 1
-                        elif event.text == "пропуск":
-                            setattr(state_object, "state", "Decision")
-                            session.commit()
-                            count += 1
-                        elif event.text == "выход":
-                            setattr(state_object, "state", "Hello")
-                            session.commit()
+                        link = VkUser().get_users_best_photos(user_dating_id)   # сделать другой вывод
+                        write_msg(old_user_id, f'{first_name} {last_name} - {link}\n')
+                        write_msg_keyboard(old_user_id, 'Выберите действие', 'decision')
+                        setattr(state_object, "state", "Answer")
+                        session.commit()
+                        continue
+                    else:
+                        count += 1
+                elif state_object.state == 'Answer':
+                    if event.text == "лайк":
+                        setattr(state_object, "state", "Decision")
+                        session.commit()
+                        # try:
+                        #     age = person['bdate']
+                        #     age = get_age(age)
+                        # except KeyError:
+                        #     age = 'нет данных'
+                        count += 1
+                        print(f'Мы в Лайк меню Answer идем в Decision')
+                    elif event.text == "крестик":
+                        setattr(state_object, "state", "Decision")
+                        session.commit()
+                    elif event.text == "пропуск":
+                        setattr(state_object, "state", "Decision")
+                        session.commit()
+                    elif event.text == "выход":
+                        setattr(state_object, "state", "Hello")
+                        session.commit()
 
     #     decision = input('Нравится этот человек?\n'
     #                      '"1" - ДА - добавить в список понравившихся\n'

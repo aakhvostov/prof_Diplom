@@ -9,8 +9,8 @@ from vk_api import VkApi
 from random import randrange
 import json
 
-# group_token = input('Token: ')
-group_token = 'fe40651e2f644afbf32552f6fabc7d471bbab8a43fffd2b08d62d63e955977892f8f1a468018b8f2ee2f5'
+group_token = input('Token: ')
+# group_token = ''
 vk = VkApi(token=group_token)
 longpoll = VkLongPoll(vk)
 
@@ -40,6 +40,7 @@ class VkUser:
         self.token = '958eb5d439726565e9333aa30e50e0f937ee432e927f0dbd541c541887d919a7c56f95c04217915c32008'
         self.vk_api = vk_api.VkApi(token=self.token).get_api()
         self.photo_info_dict = {}
+        self.users_info_dict = {}
         self.tmp = {}
         self.offset = 0
 
@@ -118,11 +119,11 @@ class VkUser:
                                                 0 — не указано)
         :return:            список словарей подходящих Юзеров
         """
-        users_info_dict = self.vk_api.users.search(offset=self.offset, count=1000, age_from=age_from, age_to=age_to,
+        self.users_info_dict = self.vk_api.users.search(offset=self.offset, count=1000, age_from=age_from, age_to=age_to,
                                                    sex=sex, city=self.get_city_id(city), status=status,
                                                    fields='bdate')
-        self.offset += 1
-        return users_info_dict['items']
+        self.offset += 1000
+        return self.users_info_dict['items']
 
 
 def get_text_buttons(label, color, payload=""):
