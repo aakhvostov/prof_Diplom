@@ -199,8 +199,7 @@ def get_dating_id(user_vk_id, search_id):
 
 
 class ORMFunctions:
-    def __init__(self):  # , session_elem):
-        # self.session = session_elem
+    def __init__(self):
         self.search_range_dict = {}
 
     def show_id_and_range(self, vk_search_id):
@@ -243,7 +242,7 @@ class ORMFunctions:
             dating_dict[user_obj.dating_id] = user_obj.dating_user_id
         return dating_dict, result
 
-    def get_ignore_users(self, vk_search_id, find_range):  # заменить в  elif user_input == 4: elif user_input == 5:
+    def get_ignore_users(self, vk_search_id, find_range):
         """
         Функция для поиска людей в Ignore_user по паре Id+range
         :param vk_search_id:    Id человека ведущего поиск
@@ -259,31 +258,6 @@ class ORMFunctions:
         return ignore_dict, result
 
 
-# def is_inside_ignore_dating_skipped(user_vk_id, search_id):
-#     """
-#     Проверяет юзера на наличие его в таблицах лайков и игноров
-#     Если совпадение есть, то Юзер пропускается в выдаче
-#     :param user_vk_id:  Id пары
-#     :param search_id:   Id диапозона
-#     :return:            True или False
-#     """
-#     result = session.query(DatingUser).filter_by(dating_user_id=user_vk_id,
-#                                                  search_id=search_id)
-#     entry = session.query(result.exists()).one()[0]
-#     if entry:
-#         return entry
-#     else:
-#         result = session.query(IgnoreUser).filter_by(ignore_user_id=user_vk_id,
-#                                                      search_id=search_id)
-#         entry = session.query(result.exists()).one()[0]
-#         if entry:
-#             return entry
-#         else:
-#             result = session.query(SkippedUser).filter_by(skip_user_id=user_vk_id,
-#                                                           search_id=search_id)
-#             entry = session.query(result.exists()).one()[0]
-#     return entry
-#
 # def is_id_and_range_inside_user_vk(vk_search_id, search_range: str):
 #     """
 #     Функция проверяет наличия составного primary key (user_id + range) в таблице User_vk
@@ -299,7 +273,7 @@ class ORMFunctions:
 #     """
 #     Функция ищет в таблице Dating Users по Id диапозон поиска
 #     :param dating_id: Id записи в таблице Dating Users
-#     :return: диапозо поиска
+#     :return: диапазон поиска
 #     """
 #     search_range = session.query(DatingUser).filter(DatingUser.dating_id == dating_id).one()
 #     return search_range.user_id_range
@@ -308,6 +282,4 @@ class ORMFunctions:
 if __name__ == '__main__':
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
-    # search = session.query(Search).filter(Search.user_id == 13924278).one()
-    # print(search)
     pass
