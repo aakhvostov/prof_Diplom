@@ -96,9 +96,17 @@ class Server:
         self.vk_api = self.vk.get_api()
         self.session = db_session
         self.event = None
+        self.current_user_id = None
+        # словарь подобранных людей
         self.users_info_dict = {}
+        # счетчик просмотра подобранных людей
         self.count = 0
+        # текущее состояние пользователя
         self.states = {}
+        # marker - показатель просмотра списков - лайк или игнор
+        # self.marker = None
+        # список объектов поисков
+        self.result_search = []
 
     def write_msg(self, message):
         self.vk.method('messages.send', {'user_id': self.event.user_id,
@@ -186,6 +194,8 @@ class Server:
         elif self.event.text == "показать/удалить людей":
             setattr(objects[1], "state", "Show")
             self.session.commit()
+            self.result_search = self.session.query(Search.search_id, Search.search_from, Search.search_to
+                                               ).filter_by(user_id=self.event.user_id).all()
             self.write_msg_keyboard('Привет! Выбери действие', 'like_ignore')
             pass
         elif self.event.text == "выйти":
@@ -199,11 +209,35 @@ class Server:
         if self.event.text == "лайк":
             setattr(objects[1], "state", "Like")
             self.session.commit()
+            # self.marker = 1
         elif self.event.text == "игнор":
             setattr(objects[1], "state", "Ignore")
             self.session.commit()
+            # self.marker = 0
+        elif re.match(r"[0-9]", self.event.text):
+            pass
+            # self.result_search
         else:
             self.write_msg_keyboard('Кого хотите посмотреть?', 'like_ignore')
+
+    # range_input = get_range_input(user_id)
+    #         dating_func_dict = orm.get_dating_users(user_id, range_input)
+    #         dating_dict = dating_func_dict[0]
+    #         if len(dating_dict) == 0:
+    #             print('Ops! удалять некого\n')
+    #             continue
+    #         dating_objects = dating_func_dict[1]
+    #         for key, url in enumerate(dating_dict.values()):
+    #             print(f'{key} - https://vk.com/id{url}')
+    #         ans = int(input('Кого хотите удалить?\n или введите 911 для отмены\n'))
+    #         if ans == 911:
+    #             continue
+    #         elif ans >= 0:
+    #             dating_objects[ans].remove_dating_user()
+    #         else:
+    #             print('Неверный ввод')
+    #             pass
+
 
     def like_state(self, objects):
         if self.event.text == "следующий":
@@ -227,7 +261,8 @@ class Server:
             setattr(objects[1], "state", "Hello")
             self.session.commit()
         else:
-            pass
+            result_ignore = self.session.query(IgnoreUser.ignore_id, IgnoreUser.ignore_user_id, IgnoreUser.search_id
+                                               ).filter_by(user_id=self.event.user_id).all()
 
     def city_state(self, objects):
         try:
