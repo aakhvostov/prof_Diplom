@@ -1,6 +1,12 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
-from sqlalchemy.orm import relationship
-from indep_func import Base, session, engine
+from sqlalchemy import Column, Integer, String, ForeignKey, create_engine
+from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.ext.declarative import declarative_base
+
+Base = declarative_base()
+DSN = 'postgres://nelot:netology@localhost:5432/netology'
+engine = create_engine(DSN)
+Session = sessionmaker(bind=engine)
+session = Session()
 
 
 class UserVk(Base):
@@ -45,7 +51,6 @@ class State(Base):
 
 
 class Search(Base):
-
     __tablename__ = 'search'
 
     search_id = Column(Integer, primary_key=True)
@@ -112,7 +117,7 @@ class UserPhoto(Base):
         for like, link in links_likes.items():
             self.photo_link = link
             self.photo_likes = like
-            self.dating_id = ORMFunctions(session).select_photo(user_vk_id, search_id)
+            self.dating_id = select_photo(user_vk_id, search_id)
             session.add(self)
             session.commit()
             print(f'фото {like} добавлено в список')
@@ -180,20 +185,76 @@ class SkippedUser(Base):
         print(f'юзер удален из skipped_user')
 
 
-class ORMFunctions:
-    def __init__(self, session_elem):
-        self.session = session_elem
-        self.search_range_dict = {}
+def is_id_and_range_inside_user_vk(vk_search_id, search_range: str):
+    """
+    Функция проверяет наличия составного primary key (user_id + range) в таблице User_vk
+    :param vk_search_id:    Id человека ведущего поиск
+    :param search_range:    диапозон поиска
+    :return:                True или False
+    """
+    result = session.query(UserVk).filter_by(user_id=vk_search_id, search_range=search_range)
+    return session.query(result.exists()).one()[0]
 
-    def is_id_and_range_inside_user_vk(self, vk_search_id, search_range: str):
-        """
-        Функция проверяет наличия составного primary key (user_id + range) в таблице User_vk
-        :param vk_search_id:    Id человека ведущего поиск
-        :param search_range:    диапозон поиска
-        :return:                True или False
-        """
-        result = self.session.query(UserVk).filter_by(user_id=vk_search_id, search_range=search_range)
-        return self.session.query(result.exists()).one()[0]
+
+def select_photo(user_vk_id, search_id):
+    """
+    Функция ищет dating_id в таблице Dating_user и возвращает его для дальнейшего использования при добавлении
+    фотографии по этой паре
+    :param user_vk_id:      Id пары
+    :param search_id:       Id диапазона поиска
+    :return:                dating_id (primary key)
+    """
+    dating_id = session.query(DatingUser).filter_by(dating_user_id=user_vk_id,
+                                                    search_id=search_id).one().dating_id
+    return dating_id
+
+
+def is_inside_ignore_dating_skipped(user_vk_id, search_id):
+    """
+    Проверяет юзера на наличие его в таблицах лайков и игноров
+    Если совпадение есть, то Юзер пропускается в выдаче
+    :param user_vk_id:  Id пары
+    :param search_id:   Id диапозона
+    :return:            True или False
+    """
+    result = session.query(DatingUser).filter_by(dating_user_id=user_vk_id,
+                                                 search_id=search_id)
+    entry = session.query(result.exists()).one()[0]
+    if entry:
+        return entry
+    else:
+        result = session.query(IgnoreUser).filter_by(ignore_user_id=user_vk_id,
+                                                     search_id=search_id)
+        entry = session.query(result.exists()).one()[0]
+        if entry:
+            return entry
+        else:
+            result = session.query(SkippedUser).filter_by(skip_user_id=user_vk_id,
+                                                          search_id=search_id)
+            entry = session.query(result.exists()).one()[0]
+    return entry
+
+
+# def looking_for_user_vk(user_vk_id):
+#     result = session.query(UserVk).filter_by(user_id=user_vk_id)
+#     entry = session.query(result.exists()).one()[0]
+#     return entry
+#
+#
+# def get_dating_search_range(dating_id):
+#     """
+#     Функция ищет в таблице Dating Users по Id диапозон поиска
+#     :param dating_id: Id записи в таблице Dating Users
+#     :return: диапозо поиска
+#     """
+#     search_range = session.query(DatingUser).filter(DatingUser.dating_id == dating_id).one()
+#     return search_range.user_id_range
+
+
+class ORMFunctions:
+    def __init__(self):  # , session_elem):
+        # self.session = session_elem
+        self.search_range_dict = {}
 
     def show_id_and_range(self, vk_search_id):
         """
@@ -201,7 +262,7 @@ class ORMFunctions:
         :param vk_search_id:    Id человека ведущего поиск
         :return:                словарь с диапозонами поиска
         """
-        result = self.session.query(UserVk.search_range).filter_by(user_id=vk_search_id).all()
+        result = session.query(UserVk.search_range).filter_by(user_id=vk_search_id).all()
         for k, v in enumerate([ranges[0] for ranges in result]):
             self.search_range_dict[k] = v
         # if len(self.search_range_dict) > 1:
@@ -215,8 +276,8 @@ class ORMFunctions:
         :param find_range:      диапазон поиска
         :return:                объект юзера из таблицы User_vk
         """
-        result = self.session.query(UserVk).filter_by(user_id=vk_search_id,
-                                                      search_range=self.search_range_dict[find_range]).one()
+        result = session.query(UserVk).filter_by(user_id=vk_search_id,
+                                                 search_range=self.search_range_dict[find_range]).one()
 
         return result
 
@@ -229,8 +290,8 @@ class ORMFunctions:
                                 и список самих объектов из таблицы Dating_user
         """
         dating_dict = {}  # скорее всего СДЕЛАТЬ SELF.DATING_DICT!!! и в остальных так же
-        result = self.session.query(DatingUser).filter_by(user_id=vk_search_id,
-                                                          user_id_range=self.search_range_dict[find_range]).all()
+        result = session.query(DatingUser).filter_by(user_id=vk_search_id,
+                                                     user_id_range=self.search_range_dict[find_range]).all()
         for user_obj in result:
             dating_dict[user_obj.dating_id] = user_obj.dating_user_id
         return dating_dict, result
@@ -244,61 +305,11 @@ class ORMFunctions:
                                 и список самих объектов из таблицы Ignore_user
         """
         ignore_dict = {}
-        result = self.session.query(IgnoreUser).filter_by(user_id=vk_search_id,
-                                                          user_id_range=self.search_range_dict[find_range]).all()
+        result = session.query(IgnoreUser).filter_by(user_id=vk_search_id,
+                                                     user_id_range=self.search_range_dict[find_range]).all()
         for key, user_obj in enumerate(result):
             ignore_dict[key] = user_obj.user_ignore_id
         return ignore_dict, result
-
-    def select_photo(self, user_vk_id, search_id):
-        """
-        Функция ищет dating_id в таблице Dating_user и возвращает его для дальнейшего использования при добавлении
-        фотографии по этой паре
-        :param user_vk_id:      Id пары
-        :param search_id:       Id диапазона поиска
-        :return:                dating_id (primary key)
-        """
-        dating_id = self.session.query(DatingUser).filter_by(dating_user_id=user_vk_id,
-                                                             search_id=search_id).one().dating_id
-        return dating_id
-
-    def is_inside_ignore_dating_skipped(self, user_vk_id, search_id):
-        """
-        Проверяет юзера на наличие его в таблицах лайков и игноров
-        Если совпадение есть, то Юзер пропускается в выдаче
-        :param user_vk_id:  Id пары
-        :param search_id:   Id диапозона
-        :return:            True или False
-        """
-        result = self.session.query(DatingUser).filter_by(dating_user_id=user_vk_id,
-                                                          search_id=search_id)
-        entry = self.session.query(result.exists()).one()[0]
-        if entry:
-            return entry
-        else:
-            result = self.session.query(IgnoreUser).filter_by(ignore_user_id=user_vk_id,
-                                                              search_id=search_id)
-            entry = self.session.query(result.exists()).one()[0]
-            if entry:
-                return entry
-            else:
-                result = self.session.query(SkippedUser).filter_by(skip_user_id=user_vk_id,
-                                                                   search_id=search_id)
-                entry = self.session.query(result.exists()).one()[0]
-        return entry
-
-    def looking_for_user_vk(self, user_vk_id):
-        result = self.session.query(UserVk).filter_by(user_id=user_vk_id)
-        entry = self.session.query(result.exists()).one()[0]
-        return entry
-    # def get_dating_search_range(self, dating_id):
-    #     """
-    #     Функция ищет в таблице Dating Users по Id диапозон поиска
-    #     :param dating_id: Id записи в таблице Dating Users
-    #     :return: диапозо поиска
-    #     """
-    #     search_range = self.session.query(DatingUser).filter(DatingUser.dating_id == dating_id).one()
-    #     return search_range.user_id_range
 
 
 if __name__ == '__main__':

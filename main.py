@@ -2,15 +2,27 @@
 # -*- coding: utf-8 -*-
 
 import re
-from vk_module import VkUser
-from bot import long_poll, group_token, states  # , write_msg, write_msg_keyboard
-from indep_func import get_age, session  # , engine
-from sql_orm import ORMFunctions, UserVk, State, DatingUser, UserPhoto, IgnoreUser, SkippedUser, Search  # , Base
+from datetime import date
 from vk_api.longpoll import VkEventType
-# from server import Server
-# server1 = Server(group_token)
+from bot import long_poll, group_token, states
+from sql_orm import ORMFunctions, UserVk, State, DatingUser, UserPhoto, IgnoreUser, SkippedUser, Search, session
+from server import Server, VkUser
 
-orm = ORMFunctions(session)
+server1 = Server(group_token)
+
+orm = ORMFunctions()
+
+
+def get_age(birth_info):
+    date_info = re.findall(r'(\d\d?).(\d\d?)?.?(\d{4})?', birth_info)[0]
+    if date_info[2]:
+        today = date.today()
+        age = (int(today.year) - int(date_info[2]) - int(
+            (today.month, today.day) < (int(date_info[1]), int(date_info[0]))))
+    else:
+        age = f"{date_info[0]}.{date_info[1]}"
+    return age
+
 
 
 def get_search_user_info(search_user_id):
@@ -19,11 +31,10 @@ def get_search_user_info(search_user_id):
     :param search_user_id:  Id человека ведущего поиск
     :return:                Объекты пользователя и его состояния
     """
-    if orm.looking_for_user_vk(search_user_id):
+    if looking_for_user_vk(search_user_id):
         for user, state, search in session.query(UserVk, State, Search).filter_by(user_id=search_user_id).all():
             return user, state, search
     else:
-
         user_info = VkUser().get_user_info(search_user_id)
         user_firstname = user_info['first_name']
         user_lastname = user_info['last_name']
@@ -71,7 +82,7 @@ def decision_for_user(users_list, search_id):
         except KeyError:
             age = 'нет данных'
         # проверка наличия найденного Id в таблицах
-        if not orm.is_inside_ignore_dating_skipped(user_id, search_id):
+        if not is_inside_ignore_dating_skipped(user_id, search_id):
             link = VkUser().get_users_best_photos(user_id)
             print(f'{first_name} {last_name} - {link}\n')
             decision = input('Нравится этот человек?\n'
@@ -101,7 +112,7 @@ def decision_for_user(users_list, search_id):
 
 def main():
     current_user_vk = VkUser()
-    count = 0           # поставить SELF
+    count = 0  # поставить SELF
     users_info_dict = {}
     for event in long_poll.listen():
         if event.type != VkEventType.MESSAGE_NEW:
@@ -114,7 +125,6 @@ def main():
             users_info_dict = states[objects[1].state](event, objects, session)
         else:
             states[objects[1].state](event, objects, session)
-
 
     # elif state_object.state == 'Error_Initial':
     #     pass
