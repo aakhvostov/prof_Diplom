@@ -5,8 +5,8 @@ import json
 from server import VkUser
 
 
-# group_token = input('Token: ')
-group_token = 'fe40651e2f644afbf32552f6fabc7d471bbab8a43fffd2b08d62d63e955977892f8f1a468018b8f2ee2f5'
+group_token = input('Token: ')
+# group_token = ''
 vk = VkApi(token=group_token)
 long_poll = VkLongPoll(vk)
 current_user_vk = VkUser()
@@ -150,7 +150,7 @@ def write_msg_keyboard(user_id, message, keyboard):
 #             setattr(objects[2], "search_to", age_to)
 #             setattr(objects[1], "state", "Decision")
 #             session.commit()
-#             print(f'state inside Range - {objects[1].state}')
+#             print(f' state inside Range - {objects[1].state}')
 #             age_from = objects[2].search_from
 #             age_to = objects[2].search_to
 #             sex = objects[2].search_sex

@@ -1,9 +1,21 @@
 import json
 import re
+from datetime import date
 from random import randrange
 from vk_api.longpoll import VkLongPoll, VkEventType
 from vk_api import VkApi, exceptions
-from sql_orm import is_inside_ignore_dating_skipped
+from sql_orm import DatingUser, UserPhoto, IgnoreUser, SkippedUser, UserVk, State, Search
+
+
+def get_age(birth_info):
+    date_info = re.findall(r'(\d\d?).(\d\d?)?.?(\d{4})?', birth_info)[0]
+    if date_info[2]:
+        today = date.today()
+        age = (int(today.year) - int(date_info[2]) - int(
+            (today.month, today.day) < (int(date_info[1]), int(date_info[0]))))
+    else:
+        age = f"{date_info[0]}.{date_info[1]}"
+    return age
 
 
 def get_text_buttons(label, color, payload=""):
@@ -56,48 +68,117 @@ class Server:
         self.count = 0
         self.states = {}
 
-    def write_msg(self, user_id, message):
-        self.vk_api.method('messages.send', {'user_id': user_id,
-                                             'message': message,
-                                             'random_id': randrange(10 ** 7)})
+    def write_msg(self, message):
+        self.vk.method('messages.send', {'user_id': self.event.user_id,
+                                         'message': message,
+                                         'random_id': randrange(10 ** 7)})
 
-    def write_msg_keyboard(self, user_id, message, keyboard):
-        self.vk_api.method('messages.send', {'user_id': user_id,
-                                             'message': message,
-                                             'random_id': randrange(10 ** 7),
-                                             'keyboard': json.dumps(keyboards[keyboard], ensure_ascii=False)})
+    def write_msg_keyboard(self, message, keyboard):
+        self.vk.method('messages.send', {'user_id': self.event.user_id,
+                                         'message': message,
+                                         'random_id': randrange(10 ** 7),
+                                         'keyboard': json.dumps(keyboards[keyboard], ensure_ascii=False)})
+
+    def looking_for_user_vk(self, user_id):
+        result = self.session.query(UserVk).filter_by(user_id=user_id)
+        if self.session.query(result.exists()).one()[0]:
+            for user, state, search in self.session.query(UserVk, State, Search).filter_by(user_id=user_id).all():
+                return user, state, search
+        else:
+            user_info = VkUser().get_user_info(user_id)
+            user_firstname = user_info['first_name']
+            user_lastname = user_info['last_name']
+            try:
+                user_age = user_info['bdate']
+                user_age = get_age(user_age)
+            except KeyError:
+                user_age = 'нет данных'
+            user_sex = user_info['sex']
+            try:
+                user_city = user_info['city'][0]['title']
+            except KeyError:
+                user_city = 'нет данных'
+            # добавляем юзера в базу данных
+            user = UserVk(user_id=user_id, user_firstname=user_firstname, user_lastname=user_lastname,
+                          user_age=user_age, user_sex=user_sex, user_city=user_city)
+            self.session.add(user)
+            self.session.commit()
+            state = State(user_id=user_id, state='Hello')
+            self.session.add(state)
+            self.session.commit()
+            search = Search().add_search(user_id=user_id)
+            self.session.add(state)
+            self.session.commit()
+            return user, state, search
+
+    # def get_search_user_info(self, search_user_id):
+    #     """
+    #     Функция добавляет пользователя в таблицу
+    #     :param search_user_id:  Id человека ведущего поиск
+    #     :return:                Объекты пользователя и его состояния
+    #     """
+    #     if self.looking_for_user_vk(search_user_id):
+    #         for user, state, search in self.session.query(UserVk, State, Search).filter_by(
+    #                 user_id=search_user_id).all():
+    #             return user, state, search
+    #     else:
+    #         user_info = VkUser().get_user_info(search_user_id)
+    #         user_firstname = user_info['first_name']
+    #         user_lastname = user_info['last_name']
+    #         try:
+    #             user_age = user_info['bdate']
+    #             user_age = get_age(user_age)
+    #         except KeyError:
+    #             user_age = 'нет данных'
+    #         user_sex = user_info['sex']
+    #         try:
+    #             user_city = user_info['city'][0]['title']
+    #         except KeyError:
+    #             user_city = 'нет данных'
+    #         # добавляем юзера в базу данных
+    #         user = UserVk(user_id=search_user_id, user_firstname=user_firstname, user_lastname=user_lastname,
+    #                       user_age=user_age, user_sex=user_sex, user_city=user_city)
+    #         self.session.add(user)
+    #         self.session.commit()
+    #         state = State(user_id=search_user_id, state='Hello')
+    #         self.session.add(state)
+    #         self.session.commit()
+    #         search = Search().add_search(user_id=search_user_id)
+    #         self.session.add(state)
+    #         self.session.commit()
+    #         return user, state, search
 
     def hello_state(self, objects):
+        if self.event.text == "выход":
+            setattr(objects[1], "state", "Hello")
+            self.session.commit()
+            return False
         setattr(objects[1], "state", "Initial")
         self.session.commit()
-        self.write_msg_keyboard(self.event.user_id, 'Выберите действие:', 'greeting')
+        self.write_msg_keyboard('Выберите действие:', 'greeting')
 
     def initial_state(self, objects):
         if self.event.text == "начать поиск":
             try:
                 setattr(objects[1], "state", "City")
                 self.session.commit()
-                self.write_msg(self.event.user_id, 'Введите город')
-                return True
+                self.write_msg('Введите город')
             except ValueError:
                 setattr(objects[1], "state", "Error_Initial")
                 self.session.commit()
-                return True
             except IndexError:
                 setattr(objects[1], "state", "Error_Initial")
                 self.session.commit()
-                return True
         elif self.event.text == "показать/удалить людей из лайк списка":
-            return True
+            pass
         elif self.event.text == "показать/удалить людей из блэк списка":
-            return True
+            pass
         elif self.event.text == "выйти":
             return False
         else:
-            self.write_msg_keyboard(self.event.user_id, 'Привет! Выбери действие', 'greeting')
+            self.write_msg_keyboard('Привет! Выбери действие', 'greeting')
             setattr(objects[1], "state", "Initial")
             self.session.commit()
-            return True
 
     def city_state(self, objects):
         try:
@@ -105,12 +186,10 @@ class Server:
             setattr(objects[2], "search_city", city_name)
             setattr(objects[1], "state", "Sex")
             self.session.commit()
-            self.write_msg(self.event.user_id, 'Введите пол:\n1 - женщина\n2 - мужчина')
-            return True
+            self.write_msg('Введите пол:\n1 - женщина\n2 - мужчина')
         except IndexError:
             setattr(objects[1], "state", "Error_City")
             self.session.commit()
-            return True
 
     def sex_state(self, objects):
         try:
@@ -118,27 +197,22 @@ class Server:
             setattr(objects[2], "search_sex", sex_value)
             setattr(objects[1], "state", "Relation")
             self.session.commit()
-            self.write_msg(self.event.user_id,
-                           'Введите семейное положение\n1 — не женат/не замужем\n2 — есть друг/есть подруга\n'
+            self.write_msg('Введите семейное положение\n1 — не женат/не замужем\n2 — есть друг/есть подруга\n'
                            '3 — помолвлен/помолвлена\n4 — женат/замужем\n5 — всё сложно\n6 — в активном поиске\n'
                            '7 — влюблён/влюблена\n8 — в гражданском браке\n0 — не указано\n')
-            return True
         except ValueError:
             setattr(objects[1], "state", "Error_Sex")
             self.session.commit()
-            return True
 
     def relation_state(self, objects):
         try:
             status = int(self.event.text)
             setattr(objects[2], "search_relation", status)
             setattr(objects[1], "state", "Range")
-            self.write_msg(self.event.user_id, 'Введите диапозон поиска ОТ и ДО (через пробел или -)')
-            return True
+            self.write_msg('Введите диапозон поиска ОТ и ДО (через пробел или -)')
         except ValueError:
             setattr(objects[1], "state", "Error_Relation")
             self.session.commit()
-            return True
 
     def range_state(self, objects):
         try:
@@ -157,51 +231,84 @@ class Server:
                 city_name = objects[2].search_city
                 status = objects[2].search_relation
                 self.users_info_dict = VkUser().search_dating_user(age_from, age_to, sex, city_name, status)
-                return True
             else:
                 setattr(objects[1], "state", "Error_Range")
                 self.session.commit()
-                return True
         except ValueError:
             setattr(objects[1], "state", "Error_Range")
             self.session.commit()
-            return True
 
     def decision_state(self, objects):
-        person = self.users_info_dict[self.count]
-        user_dating_id = person['id']
-        # проверка наличия найденного Id в таблицах
-        if not is_inside_ignore_dating_skipped(user_dating_id, self.event.user_id):
-            first_name = person['first_name']
-            last_name = person['last_name']
-            link = VkUser().get_users_best_photos(user_dating_id)  # сделать другой вывод
-            self.write_msg(self.event.user_id, f'{first_name} {last_name} - {link}\n')
-            self.write_msg_keyboard(self.event.user_id, 'Выберите действие', 'decision')
-            setattr(objects[1], "state", "Answer")
+        if self.event.text == "выход":
+            setattr(objects[1], "state", "Hello")
             self.session.commit()
+            return False
+        else:
+            person = self.users_info_dict[self.count]
+            user_dating_id = person['id']
+            # проверка наличия найденного Id в таблицах
+            if not self.is_inside_ignore_dating_skipped(user_dating_id, self.event.user_id):
+                first_name = person['first_name']
+                last_name = person['last_name']
+                link = VkUser().get_users_best_photos(user_dating_id)  # сделать другой вывод
+                self.write_msg(f'{first_name} {last_name} - {link}\n')
+                self.write_msg_keyboard('Выберите действие', 'decision')
+                setattr(objects[1], "state", "Answer")
+                self.session.commit()
+            else:
+                self.count += 1
+
+    def is_inside_ignore_dating_skipped(self, user_vk_id, search_id):
+        """
+        Проверяет юзера на наличие его в таблицах лайков и игноров
+        Если совпадение есть, то Юзер пропускается в выдаче
+        :param user_vk_id:  Id пары
+        :param search_id:   Id диапозона
+        :return:            True или False
+        """
+        result1 = self.session.query(DatingUser).filter_by(dating_user_id=user_vk_id, search_id=search_id)
+        if self.session.query(result1.exists()).one()[0]:
             return True
         else:
-            self.count += 1
-            return True
+            result2 = self.session.query(IgnoreUser).filter_by(ignore_user_id=user_vk_id, search_id=search_id)
+            if self.session.query(result2.exists()).one()[0]:
+                return True
+            else:
+                result3 = self.session.query(SkippedUser).filter_by(skip_user_id=user_vk_id, search_id=search_id)
+                return self.session.query(result3.exists()).one()[0]
 
     def answer_state(self, objects):
         if self.event.text == "лайк":
             setattr(objects[1], "state", "Decision")
             self.session.commit()
-            print('догли до Answer')
-            # try:
-            #     age = person['bdate']
-            #     age = get_age(age)
-            # except KeyError:
-            #     age = 'нет данных'
+            person = self.users_info_dict[self.count]
+            first_name = person['first_name']
+            last_name = person['last_name']
+            user_dating_id = person['id']
+            print('дошли до Answer')
+            try:
+                age = person['bdate']
+                age = get_age(age)
+            except KeyError:
+                age = 'нет данных'
+            DatingUser().add_dating_user(user_dating_id, first_name, last_name, age, objects[2].search_id)
+            UserPhoto().add_user_photo(VkUser().get_users_best_photos(user_dating_id), user_dating_id,
+                                       objects[2].search_id)
             self.count += 1
-            print(f'Мы в Лайк меню Answer идем в Decision')
         elif self.event.text == "крестик":
             setattr(objects[1], "state", "Decision")
             self.session.commit()
+            person = self.users_info_dict[self.count]
+            user_ignore_id = person['id']
+            IgnoreUser().add_ignore_user(user_ignore_id, objects[2].search_id)
+            self.count += 1
         elif self.event.text == "пропуск":
             setattr(objects[1], "state", "Decision")
             self.session.commit()
+            person = self.users_info_dict[self.count]
+            user_skip_id = person['id']
+            SkippedUser().add_skipped_user(user_skip_id, objects[2].search_id)
+            self.count += 1
         elif self.event.text == "выход":
             setattr(objects[1], "state", "Hello")
             self.session.commit()
@@ -242,17 +349,21 @@ class Server:
         }
         return self.states[state_name]
 
-    def start(self, func_name):
+    def start(self):
         for event in self.long_poll.listen():
             self.event = event
             if self.event.type != VkEventType.MESSAGE_NEW:
                 continue
             if not self.event.to_me:
                 continue
-            objects = [*func_name(self.event.user_id)]
-            print(objects)
-            print(f'state after = {objects[1].state}')
-            self.use_state(objects[1].state)(*objects)
+            objects = self.looking_for_user_vk(self.event.user_id)
+            print(f'current state = {objects[1].state}')
+            ans = self.use_state(objects[1].state)(objects)
+            # при нажатии Выход ans возвращает False и выходим из программы
+            if ans or ans is None:
+                continue
+            else:
+                break
 
 
 class VkUser:
@@ -345,3 +456,7 @@ class VkUser:
                                                         status=status, fields='bdate')
         self.offset += 1000
         return self.users_info_dict['items']
+
+
+if __name__ == '__main__':
+    pass
