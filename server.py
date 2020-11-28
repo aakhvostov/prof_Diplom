@@ -6,7 +6,6 @@ from vk_api.longpoll import VkLongPoll, VkEventType
 from vk_api import VkApi, exceptions
 from sql_orm import DatingUser, UserPhoto, IgnoreUser, SkippedUser, ORMFunctions
 
-
 orm = ORMFunctions()
 
 
@@ -33,14 +32,14 @@ def get_text_buttons(label, color, payload=""):
 
 
 filter_msg = {'inline': True,
-               'buttons': [
-                   [
-                       get_text_buttons('да', 'positive'),
-                       get_text_buttons('нет', 'secondary')
-                   ],
-                   [get_text_buttons('выйти', 'negative')]
-               ]
-               }
+              'buttons': [
+                  [
+                      get_text_buttons('да', 'positive'),
+                      get_text_buttons('нет', 'secondary')
+                  ],
+                  [get_text_buttons('выйти', 'negative')]
+              ]
+              }
 
 like_ignore = {'inline': True,
                'buttons': [
@@ -379,18 +378,19 @@ class Server:
             if not orm.is_viewed(user_dating_id, self.event.user_id):
                 first_name = person['first_name']
                 last_name = person['last_name']
-                new_link_dict = {}
+                attachment_list = []
                 link_dict = VkUser().get_users_best_photos(user_dating_id)
                 try:
                     for likes, photo_links in link_dict.items():
                         pattern = re.compile(r"(\d+)\@(.+)")
-                        link = pattern.sub(r"\2", photo_links)
-                        new_link_dict[likes] = link
+                        attachment = pattern.sub(r"\1", photo_links)
+                        attachment_list.append(f'photo{user_dating_id}_{attachment}')
+                        print(attachment_list)
+                    self.write_msg_attachment(f'{first_name} {last_name}', attachment_list, 'decision')
                 except AttributeError:
                     new_link_dict = link_dict
-                # сделать другой вывод
-                self.write_msg(f'{first_name} {last_name} - {new_link_dict}\n')
-                self.write_msg_keyboard('Выберите действие', 'decision')
+                    self.write_msg(f'{first_name} {last_name} - {new_link_dict}\n')
+                    self.write_msg_keyboard('Выберите действие', 'decision')
                 setattr(objects[1], "state", "Answer")
                 self.session.commit()
             else:

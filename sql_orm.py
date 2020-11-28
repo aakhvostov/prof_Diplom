@@ -4,7 +4,6 @@ from sqlalchemy import Column, Integer, String, ForeignKey, create_engine
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
 
-
 Base = declarative_base()
 DSN = 'postgres://nelot:netology@localhost:5432/netology'
 engine = create_engine(DSN)
@@ -21,7 +20,7 @@ class UserVk(Base):
     user_age = Column(String(15))
     user_sex = Column(Integer)
     user_city = Column(String(40))
-    searches = relationship('Search',)
+    searches = relationship('Search', )
     datings = relationship('DatingUser')
     ignores = relationship('IgnoreUser')
 
@@ -47,6 +46,7 @@ class Search(Base):
         self.user_id = user_id
         session.add(self)
         session.commit()
+        return self.user_id
 
 
 class DatingUser(Base):
@@ -224,7 +224,7 @@ class ORMFunctions:
     def show_dating_user(self):
         """Функция выдает по одному понравившихся пользователей"""
         dat_name = f'{self.dating_list[self.dating_count].dating_firstname} ' \
-                    f'{self.dating_list[self.dating_count].dating_lastname}'
+            f'{self.dating_list[self.dating_count].dating_lastname}'
         dat_age = self.dating_list[self.dating_count].dating_age
         dat_id = self.dating_list[self.dating_count].dating_user_id
         dat_attach = self.dating_list[self.dating_count].photos[0].attachment_id
