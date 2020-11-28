@@ -1,3 +1,5 @@
+import re
+
 from sqlalchemy import Column, Integer, String, ForeignKey, create_engine
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
@@ -86,12 +88,15 @@ class UserPhoto(Base):
     photo_id = Column(Integer, primary_key=True)
     photo_link = Column(String)
     photo_likes = Column(Integer)
+    attachment_id = Column(Integer)
     dating_id = Column(Integer, ForeignKey('dating_user.dating_id'))
 
-    def add_user_photo(self, links_likes, user_vk_id, search_user_id):
-        for like, link in links_likes.items():
-            self.photo_link = link
+    def add_user_photo(self, likes_attechments_links, user_vk_id, search_user_id):
+        pattern = re.compile(r"(\d+)\@(.+)")
+        for like, link in likes_attechments_links.items():
             self.photo_likes = like
+            self.photo_link = pattern.sub(r"\2", link)
+            self.attachment_id = pattern.sub(r"\1", link)
             self.dating_id = get_dating_id(user_vk_id, search_user_id)
             session.add(self)
             session.commit()
@@ -221,8 +226,9 @@ class ORMFunctions:
         dat_name = f'{self.dating_list[self.dating_count].dating_firstname} ' \
                     f'{self.dating_list[self.dating_count].dating_lastname}'
         dat_age = self.dating_list[self.dating_count].dating_age
-        dat_photo = self.dating_list[self.dating_count].photos[0].photo_link
-        return dat_name, dat_age, dat_photo
+        dat_id = self.dating_list[self.dating_count].dating_user_id
+        dat_attach = self.dating_list[self.dating_count].photos[0].attachment_id
+        return dat_name, dat_age, dat_id, dat_attach
 
     def get_ignore_list(self, vk_search_id):
         """Функция создает список всех игнорируемых пользователей"""
@@ -234,6 +240,9 @@ class ORMFunctions:
 
 
 if __name__ == '__main__':
-    # Base.metadata.drop_all(engine)
-    # Base.metadata.create_all(engine)
+    Base.metadata.drop_all(engine)
+    Base.metadata.create_all(engine)
+    # orm = ORMFunctions()
+    # orm.get_dating_list(13924278)
+    # print(orm.show_dating_user())
     pass

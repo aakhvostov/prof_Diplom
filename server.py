@@ -137,11 +137,10 @@ class VkUser:
                                                  extended=1, count=1000, photo_sizes=0)
             # создаем словарь со всеми лайками и ссылками на фото
             for elem in photos_info['items']:
+                attachment_id = elem['id']
                 photo_url = elem['sizes'][-1]['url']
-                photos_list_likes = elem['likes']['count']
-                if photos_list_likes in self.photo_info_dict:
-                    self.tmp[photos_list_likes - 1] = photo_url
-                self.tmp[photos_list_likes] = photo_url
+                photos_likes = elem['likes']['count']
+                self.tmp[photos_likes] = f'{attachment_id}@{photo_url}'
             # новый словарь с необходимым количеством максимальных лайков
             try:
                 self.photo_info_dict = {k: v for k, v in self.tmp.items() if
@@ -226,6 +225,13 @@ class Server:
                                          'random_id': randrange(10 ** 7),
                                          'keyboard': json.dumps(keyboards[keyboard], ensure_ascii=False)})
 
+    def write_msg_attachment(self, message, attachment, keyboard):
+        self.vk.method('messages.send', {'user_id': self.event.user_id,
+                                         'message': message,
+                                         'random_id': randrange(10 ** 7),
+                                         'keyboard': json.dumps(keyboards[keyboard], ensure_ascii=False),
+                                         'attachment': attachment})
+
     def hello_state(self, objects):
         if self.event.text == "выход" or self.event.text == "выйти":
             setattr(objects[1], "state", "Initial")
@@ -269,20 +275,20 @@ class Server:
     def like_state(self, objects):
         if self.event.text == "следующий":
             orm.dating_count += 1
-            dat_name, dat_age, dat_photo = orm.show_dating_user()
-            self.write_msg_keyboard(f'{dat_name}\nВозраст - {dat_age}\n{dat_photo}', 'show_users')
+            dat_name, dat_age, dat_id, dat_attach = orm.show_dating_user()
+            self.write_msg_attachment(f'{dat_name}\nВозраст - {dat_age}\n', f'photo{dat_id}_{dat_attach}', 'show_users')
         elif self.event.text == "удалить":
             orm.dating_list[orm.dating_count].remove_dating_user()
             orm.dating_count += 1
-            dat_name, dat_age, dat_photo = orm.show_dating_user()
-            self.write_msg_keyboard(f'{dat_name}\nВозраст - {dat_age}\n{dat_photo}', 'show_users')
+            dat_name, dat_age, dat_id, dat_attach = orm.show_dating_user()
+            self.write_msg_attachment(f'{dat_name}\nВозраст - {dat_age}\n', f'photo{dat_id}_{dat_attach}', 'show_users')
         elif self.event.text == "выйти":
             self.write_msg_keyboard('Выбери действие', 'greeting')
             setattr(objects[1], "state", "Initial")
             self.session.commit()
         else:
-            dat_name, dat_age, dat_photo = orm.show_dating_user()
-            self.write_msg_keyboard(f'{dat_name}\nВозраст - {dat_age}\n{dat_photo}', 'show_users')
+            dat_name, dat_age, dat_id, dat_attach = orm.show_dating_user()
+            self.write_msg_attachment(f'{dat_name}\nВозраст - {dat_age}\n', f'photo{dat_id}_{dat_attach}', 'show_users')
 
     def ignore_state(self, objects):
         if self.event.text == "следующий":
@@ -373,8 +379,17 @@ class Server:
             if not orm.is_viewed(user_dating_id, self.event.user_id):
                 first_name = person['first_name']
                 last_name = person['last_name']
-                link = VkUser().get_users_best_photos(user_dating_id)  # сделать другой вывод
-                self.write_msg(f'{first_name} {last_name} - {link}\n')
+                new_link_dict = {}
+                link_dict = VkUser().get_users_best_photos(user_dating_id)
+                try:
+                    for likes, photo_links in link_dict.items():
+                        pattern = re.compile(r"(\d+)\@(.+)")
+                        link = pattern.sub(r"\2", photo_links)
+                        new_link_dict[likes] = link
+                except AttributeError:
+                    new_link_dict = link_dict
+                # сделать другой вывод
+                self.write_msg(f'{first_name} {last_name} - {new_link_dict}\n')
                 self.write_msg_keyboard('Выберите действие', 'decision')
                 setattr(objects[1], "state", "Answer")
                 self.session.commit()
@@ -457,6 +472,8 @@ class Server:
                 setattr(objects[1], "state", "Initial")
                 self.session.commit()
                 self.write_msg_keyboard('Выберите действие:', 'greeting')
+            elif self.event.text == '/test':
+                self.write_msg_attachment('Вышло фото?', 364387516)
             else:
                 print(f'current state = {objects[1].state}')
                 ans = self.use_state(objects[1].state)(objects)
