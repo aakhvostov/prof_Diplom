@@ -196,6 +196,9 @@ class VkUser:
         return self.users_info_dict['items']
 
 
+vk_server = VkUser()
+
+
 class Server:
 
     def __init__(self, api_token, db_session, server_name: str = "Empty"):
@@ -257,10 +260,12 @@ class Server:
             orm.get_ignore_list(self.event.user_id)
             self.write_msg_keyboard('Привет! Выбери действие', 'like_ignore')
         elif self.event.text == "лайк":
+            orm.dating_count = 0
             setattr(objects[1], "state", "Like")
             self.session.commit()
             self.write_msg_keyboard(f'У вас найдено - {len(orm.dating_list)} человек. Приступим?', 'filter_msg')
         elif self.event.text == "игнор":
+            orm.ignore_count = 0
             setattr(objects[1], "state", "Ignore")
             self.session.commit()
             self.write_msg_keyboard(f'У вас найдено - {len(orm.ignore_list)} человек. Приступим?', 'filter_msg')
@@ -274,39 +279,69 @@ class Server:
     def like_state(self, objects):
         if self.event.text == "следующий":
             orm.dating_count += 1
-            dat_name, dat_age, dat_id, dat_attach = orm.show_dating_user()
-            self.write_msg_attachment(f'{dat_name}\nВозраст - {dat_age}\n', f'photo{dat_id}_{dat_attach}', 'show_users')
+            if orm.show_dating_user():
+                dat_name, dat_age, dat_id, dat_attach = orm.show_dating_user()
+                self.write_msg_attachment(f'{dat_name}\nВозраст - {dat_age}\nhttps://vk.com/id{dat_id}',
+                                          f'photo{dat_id}_{dat_attach}', 'show_users')
+            else:
+                setattr(objects[1], "state", "Initial")
+                self.session.commit()
+                self.write_msg_keyboard('Список закончился. Выберите действие', 'greeting')
+
         elif self.event.text == "удалить":
             orm.dating_list[orm.dating_count].remove_dating_user()
             orm.dating_count += 1
-            dat_name, dat_age, dat_id, dat_attach = orm.show_dating_user()
-            self.write_msg_attachment(f'{dat_name}\nВозраст - {dat_age}\n', f'photo{dat_id}_{dat_attach}', 'show_users')
+            if orm.show_dating_user():
+                dat_name, dat_age, dat_id, dat_attach = orm.show_dating_user()
+                self.write_msg_attachment(f'{dat_name}\nВозраст - {dat_age}\nhttps://vk.com/id{dat_id}',
+                                          f'photo{dat_id}_{dat_attach}', 'show_users')
+            else:
+                setattr(objects[1], "state", "Initial")
+                self.session.commit()
+                self.write_msg_keyboard('Список закончился. Выберите действие', 'greeting')
         elif self.event.text == "выйти":
             self.write_msg_keyboard('Выбери действие', 'greeting')
             setattr(objects[1], "state", "Initial")
             self.session.commit()
         else:
-            dat_name, dat_age, dat_id, dat_attach = orm.show_dating_user()
-            self.write_msg_attachment(f'{dat_name}\nВозраст - {dat_age}\n', f'photo{dat_id}_{dat_attach}', 'show_users')
+            if orm.show_dating_user():
+                dat_name, dat_age, dat_id, dat_attach = orm.show_dating_user()
+                self.write_msg_attachment(f'{dat_name}\nВозраст - {dat_age}\nhttps://vk.com/id{dat_id}',
+                                          f'photo{dat_id}_{dat_attach}', 'show_users')
+            else:
+                setattr(objects[1], "state", "Initial")
+                self.session.commit()
+                self.write_msg_keyboard('Лайк список пуст. Выберите действие', 'greeting')
 
     def ignore_state(self, objects):
         if self.event.text == "следующий":
-            orm.dating_count += 1
-            self.write_msg_keyboard(f'https://vk.com/id{orm.show_ignore_user()}', 'show_users')
-
+            orm.ignore_count += 1
+            if orm.show_ignore_user():
+                self.write_msg_keyboard(f'https://vk.com/id{orm.show_ignore_user()}', 'show_users')
+            else:
+                setattr(objects[1], "state", "Initial")
+                self.session.commit()
+                self.write_msg_keyboard('Список закончился. Выберите действие', 'greeting')
         elif self.event.text == "удалить":
             orm.ignore_list[orm.ignore_count].remove_ignore_user()
-            orm.dating_count += 1
-            self.write_msg_keyboard(f'https://vk.com/id{orm.show_ignore_user()}', 'show_users')
-
+            orm.ignore_count += 1
+            if orm.show_ignore_user():
+                self.write_msg_keyboard(f'https://vk.com/id{orm.show_ignore_user()}', 'show_users')
+            else:
+                setattr(objects[1], "state", "Initial")
+                self.session.commit()
+                self.write_msg_keyboard('Список закончился. Выберите действие', 'greeting')
         elif self.event.text == "выйти":
             self.write_msg_keyboard('Выбери действие', 'greeting')
             setattr(objects[1], "state", "Initial")
             self.session.commit()
         else:
-            orm.show_ignore_user()
-            self.write_msg_keyboard(f'https://vk.com/id{orm.show_ignore_user()}', 'show_users')
-
+            if orm.show_ignore_user():
+                self.write_msg_keyboard(f'https://vk.com/id{orm.show_ignore_user()}', 'show_users')
+            else:
+                setattr(objects[1], "state", "Initial")
+                self.session.commit()
+                self.write_msg_keyboard('Игнор список пуст. Выберите действие', 'greeting')
     def city_state(self, objects):
         try:
             city_name = VkUser().get_city_name(VkUser().get_city_id(self.event.text))[0]['title']
@@ -346,22 +381,21 @@ class Server:
             age_pattern = re.compile(r'(\d\d?)[ -]+(\d\d?)')
             age_from = int(age_pattern.sub(r"\1", self.event.text))
             age_to = int(age_pattern.sub(r"\2", self.event.text))
-            if age_to - age_from > 0:
-                setattr(objects[2], "search_from", age_from)
-                setattr(objects[2], "search_to", age_to)
-                setattr(objects[1], "state", "Decision")
-                self.session.commit()
-                print(f'state inside Range - {objects[1].state}')
-                age_from = objects[2].search_from
-                age_to = objects[2].search_to
-                sex = objects[2].search_sex
-                city_name = objects[2].search_city
-                status = objects[2].search_relation
-                self.users_info_dict = VkUser().search_dating_user(age_from, age_to, sex, city_name, status)
-                self.write_msg_keyboard('Приступим?!', 'filter_msg')
-            else:
+            if age_to - age_from < 0:
                 setattr(objects[1], "state", "Error_Range")
                 self.session.commit()
+                return
+            setattr(objects[2], "search_from", age_from)
+            setattr(objects[2], "search_to", age_to)
+            setattr(objects[1], "state", "Decision")
+            self.session.commit()
+            age_from = objects[2].search_from
+            age_to = objects[2].search_to
+            sex = objects[2].search_sex
+            city_name = objects[2].search_city
+            status = objects[2].search_relation
+            vk_server.search_dating_user(age_from, age_to, sex, city_name, status)
+            self.write_msg_keyboard('Приступим?!', 'filter_msg')
         except ValueError:
             setattr(objects[1], "state", "Error_Range")
             self.session.commit()
@@ -372,7 +406,7 @@ class Server:
             self.session.commit()
             return False
         else:
-            person = self.users_info_dict[self.count]
+            person = vk_server.users_info_dict['items'][self.count]
             user_dating_id = person['id']
             # проверка наличия найденного Id в таблицах
             if not orm.is_viewed(user_dating_id, self.event.user_id):
@@ -400,7 +434,7 @@ class Server:
         if self.event.text == "лайк":
             setattr(objects[1], "state", "Decision")
             self.session.commit()
-            person = self.users_info_dict[self.count]
+            person = vk_server.users_info_dict['items'][self.count]
             first_name = person['first_name']
             last_name = person['last_name']
             user_dating_id = person['id']
@@ -416,14 +450,14 @@ class Server:
         elif self.event.text == "крестик":
             setattr(objects[1], "state", "Decision")
             self.session.commit()
-            person = self.users_info_dict[self.count]
+            person = vk_server.users_info_dict['items'][self.count]
             user_ignore_id = person['id']
             IgnoreUser().add_ignore_user(user_ignore_id, self.event.user_id)
             self.count += 1
         elif self.event.text == "пропуск":
             setattr(objects[1], "state", "Decision")
             self.session.commit()
-            person = self.users_info_dict[self.count]
+            person = vk_server.users_info_dict['items'][self.count]
             user_skip_id = person['id']
             SkippedUser().add_skipped_user(user_skip_id, self.event.user_id)
             self.count += 1
@@ -447,9 +481,7 @@ class Server:
         }
         return self.states[state_name]
 
-    def start(self, orm, vkuser):
-        print(orm)
-        print(vkuser)
+    def start(self,):
         for event in self.long_poll.listen():
             self.event = event
             if self.event.type != VkEventType.MESSAGE_NEW:
@@ -458,10 +490,6 @@ class Server:
                 continue
             if self.event.user_id != self.current_user_id:
                 self.current_user_id = self.event.user_id
-                orm = ORMFunctions()
-                vkuser = VkUser()
-                print(orm)
-                print(vkuser)
             else:
                 pass
             if orm.looking_for_user_vk(self.event.user_id) is None:
@@ -475,7 +503,7 @@ class Server:
             elif self.event.text == '/test':
                 self.write_msg_attachment('Вышло фото?', 364387516)
             else:
-                print(f'current state = {objects[1].state}')
+                # print(f'current state = {objects[1].state}')
                 ans = self.use_state(objects[1].state)(objects)
                 # при нажатии Выход ans возвращает False и выходим из программы
                 if ans or ans is None:

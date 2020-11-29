@@ -21,7 +21,7 @@ vkuser = VkUser()
 
 
 if __name__ == '__main__':
-    Server(group_token, session).start(orm, vkuser)
+    Server(group_token, session).start()
     # server1.start()
     # main()
                         # Что еще необхоимо сделать:

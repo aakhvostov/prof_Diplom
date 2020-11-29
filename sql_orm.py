@@ -223,12 +223,15 @@ class ORMFunctions:
 
     def show_dating_user(self):
         """Функция выдает по одному понравившихся пользователей"""
-        dat_name = f'{self.dating_list[self.dating_count].dating_firstname} ' \
-            f'{self.dating_list[self.dating_count].dating_lastname}'
-        dat_age = self.dating_list[self.dating_count].dating_age
-        dat_id = self.dating_list[self.dating_count].dating_user_id
-        dat_attach = self.dating_list[self.dating_count].photos[0].attachment_id
-        return dat_name, dat_age, dat_id, dat_attach
+        try:
+            dat_name = f'{self.dating_list[self.dating_count].dating_firstname} ' \
+                f'{self.dating_list[self.dating_count].dating_lastname}'
+            dat_age = self.dating_list[self.dating_count].dating_age
+            dat_id = self.dating_list[self.dating_count].dating_user_id
+            dat_attach = self.dating_list[self.dating_count].photos[0].attachment_id
+            return dat_name, dat_age, dat_id, dat_attach
+        except IndexError:
+            return False
 
     def get_ignore_list(self, vk_search_id):
         """Функция создает список всех игнорируемых пользователей"""
@@ -236,7 +239,10 @@ class ORMFunctions:
 
     def show_ignore_user(self):
         """Функция выдает по одному игнорируемых пользователей"""
-        return self.ignore_list[self.ignore_count].ignore_user_id
+        try:
+            return self.ignore_list[self.ignore_count].ignore_user_id
+        except IndexError:
+            return False
 
 
 if __name__ == '__main__':
