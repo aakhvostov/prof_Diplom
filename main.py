@@ -2,9 +2,7 @@
 # -*- coding: utf-8 -*-
 from bot import group_token
 from sql_orm import session
-from server import Server, ORMFunctions, VkUser
-orm = ORMFunctions()
-vkuser = VkUser()
+from server import Server
 
 
 # elif state_object.state == 'Error_Initial':
@@ -22,11 +20,6 @@ vkuser = VkUser()
 
 if __name__ == '__main__':
     Server(group_token, session).start()
-    # server1.start()
-    # main()
-                        # Что еще необхоимо сделать:
-
-    # Удалить из списка человека
+    # Что еще необхоимо сделать:
     # Реализовать тесты на базовую функциональность
-    # удалить тестировочные принты
     pass

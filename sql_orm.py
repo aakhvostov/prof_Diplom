@@ -1,8 +1,8 @@
 import re
-
 from sqlalchemy import Column, Integer, String, ForeignKey, create_engine
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
+
 
 Base = declarative_base()
 DSN = 'postgres://nelot:netology@localhost:5432/netology'
@@ -71,7 +71,7 @@ class DatingUser(Base):
         self.user_id = user_id
         session.add(self)
         session.commit()
-        print(f'юзер {self.dating_user_id} добавлен в лайк список')
+        # print(f'юзер {self.dating_user_id} добавлен в лайк список')
 
     def remove_dating_user(self):
         """
@@ -79,7 +79,7 @@ class DatingUser(Base):
         """
         session.delete(self)
         session.commit()
-        print(f'юзер удален из dating_user')
+        # print(f'юзер удален из dating_user')
 
 
 class UserPhoto(Base):
@@ -100,7 +100,7 @@ class UserPhoto(Base):
             self.dating_id = get_dating_id(user_vk_id, search_user_id)
             session.add(self)
             session.commit()
-            print(f'фото {like} добавлено в список')
+            # print(f'фото {like} добавлено в список')
 
 
 class IgnoreUser(Base):
@@ -118,7 +118,7 @@ class IgnoreUser(Base):
         self.user_id = search_user_id
         session.add(self)
         session.commit()
-        print(f'юзер {self.ignore_user_id}  добавлен в игнор список')
+        # print(f'юзер {self.ignore_user_id}  добавлен в игнор список')
         return self.ignore_id
 
     def remove_ignore_user(self):
@@ -127,7 +127,7 @@ class IgnoreUser(Base):
         """
         session.delete(self)
         session.commit()
-        print(f'юзер удален из ignore_user')
+        # print(f'юзер удален из ignore_user')
 
 
 class SkippedUser(Base):
@@ -145,7 +145,7 @@ class SkippedUser(Base):
         self.user_id = search_user_id
         session.add(self)
         session.commit()
-        print(f'юзер {self.skip_id} добавлен в скип список')
+        # print(f'юзер {self.skip_user_id} добавлен в скип список')
         return self.skip_id
 
     def remove_skip_user(self):
@@ -154,7 +154,7 @@ class SkippedUser(Base):
         """
         session.delete(self)
         session.commit()
-        print(f'юзер удален из skipped_user')
+        # print(f'юзер удален из skipped_user')
 
 
 def get_dating_id(user_vk_id, search_user_id):
@@ -248,7 +248,4 @@ class ORMFunctions:
 if __name__ == '__main__':
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
-    # orm = ORMFunctions()
-    # orm.get_dating_list(13924278)
-    # print(orm.show_dating_user())
     pass

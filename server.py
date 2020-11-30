@@ -1,92 +1,10 @@
 import json
 import re
-from datetime import date
 from random import randrange
 from vk_api.longpoll import VkLongPoll, VkEventType
 from vk_api import VkApi, exceptions
 from sql_orm import DatingUser, UserPhoto, IgnoreUser, SkippedUser, ORMFunctions
-
-orm = ORMFunctions()
-
-
-def get_age(birth_info):
-    date_info = re.findall(r'(\d\d?).(\d\d?)?.?(\d{4})?', birth_info)[0]
-    if date_info[2]:
-        today = date.today()
-        age = (int(today.year) - int(date_info[2]) - int(
-            (today.month, today.day) < (int(date_info[1]), int(date_info[0]))))
-    else:
-        age = f"{date_info[0]}.{date_info[1]}"
-    return age
-
-
-def get_text_buttons(label, color, payload=""):
-    return {
-        "action": {
-            "type": "text",
-            "label": label,
-            "payload": json.dumps(payload)
-        },
-        "color": color
-    }
-
-
-filter_msg = {'inline': True,
-              'buttons': [
-                  [
-                      get_text_buttons('да', 'positive'),
-                      get_text_buttons('нет', 'secondary')
-                  ],
-                  [get_text_buttons('выйти', 'negative')]
-              ]
-              }
-
-like_ignore = {'inline': True,
-               'buttons': [
-                   [
-                       get_text_buttons('лайк', 'positive'),
-                       get_text_buttons('игнор', 'secondary')
-                   ],
-                   [get_text_buttons('выйти', 'negative')]
-               ]
-               }
-
-show_users = {'inline': True,
-              'buttons': [
-                  [
-                      get_text_buttons('следующий', 'positive'),
-                      get_text_buttons('удалить', 'secondary')
-                  ],
-                  [get_text_buttons('выйти', 'negative')]
-              ]
-              }
-
-decision = {'inline': True,
-            'buttons': [
-                [
-                    get_text_buttons('лайк', 'positive'),
-                    get_text_buttons('крестик', 'secondary'),
-                    get_text_buttons('пропуск', 'secondary')
-                ],
-                [get_text_buttons('выход', 'negative')]
-            ]
-            }
-
-greeting = {'one_time': True,
-            'buttons': [
-                [get_text_buttons('начать поиск', 'primary')],
-                [get_text_buttons('показать/удалить людей', 'secondary')],
-                [get_text_buttons('выйти', 'negative')],
-            ]
-            }
-
-keyboards = {
-    'greeting': greeting,
-    'decision': decision,
-    'show_users': show_users,
-    'like_ignore': like_ignore,
-    'filter_msg': filter_msg
-}
+from bot import keyboards, get_age
 
 
 class VkUser:
@@ -147,11 +65,13 @@ class VkUser:
                 return self.photo_info_dict
             except IndexError:
                 if len(self.tmp) == 0:
-                    return str(f'у юзера {user_id} нет фотографий в профиле')
+                    self.photo_info_dict[0] = 'нет фотографий в профиле'
+                    return self.photo_info_dict
                 else:
                     return self.tmp
         except exceptions.ApiError:
-            return str(f'профиль юзера {user_id} приватный - фоток нет')
+            self.photo_info_dict[0] = 'приватный профиль - фоток нет'
+            return self.photo_info_dict
 
     def get_city_id(self, city):
         """
@@ -196,6 +116,7 @@ class VkUser:
         return self.users_info_dict['items']
 
 
+orm = ORMFunctions()
 vk_server = VkUser()
 
 
@@ -342,6 +263,7 @@ class Server:
                 setattr(objects[1], "state", "Initial")
                 self.session.commit()
                 self.write_msg_keyboard('Игнор список пуст. Выберите действие', 'greeting')
+
     def city_state(self, objects):
         try:
             city_name = VkUser().get_city_name(VkUser().get_city_id(self.event.text))[0]['title']
@@ -395,76 +317,80 @@ class Server:
             city_name = objects[2].search_city
             status = objects[2].search_relation
             vk_server.search_dating_user(age_from, age_to, sex, city_name, status)
-            self.write_msg_keyboard('Приступим?!', 'filter_msg')
+            user_founded_id, first_name, last_name, age, attachment_list = self.get_founded_user_info()
+            if len(attachment_list) >= 1:
+                self.write_msg_attachment(f'{first_name} {last_name}', attachment_list, 'decision')
+            else:
+                self.write_msg(f'{first_name} {last_name} - {attachment_list}\n')
+                self.write_msg_keyboard('Выберите действие', 'decision')
         except ValueError:
             setattr(objects[1], "state", "Error_Range")
             self.session.commit()
 
-    def decision_state(self, objects):
-        if self.event.text == "выход":
-            setattr(objects[1], "state", "Hello")
-            self.session.commit()
-            return False
-        else:
-            person = vk_server.users_info_dict['items'][self.count]
-            user_dating_id = person['id']
-            # проверка наличия найденного Id в таблицах
-            if not orm.is_viewed(user_dating_id, self.event.user_id):
-                first_name = person['first_name']
-                last_name = person['last_name']
-                attachment_list = []
-                link_dict = VkUser().get_users_best_photos(user_dating_id)
-                try:
-                    for likes, photo_links in link_dict.items():
-                        pattern = re.compile(r"(\d+)\@(.+)")
-                        attachment = pattern.sub(r"\1", photo_links)
-                        attachment_list.append(f'photo{user_dating_id}_{attachment}')
-                        print(attachment_list)
-                    self.write_msg_attachment(f'{first_name} {last_name}', attachment_list, 'decision')
-                except AttributeError:
-                    new_link_dict = link_dict
-                    self.write_msg(f'{first_name} {last_name} - {new_link_dict}\n')
-                    self.write_msg_keyboard('Выберите действие', 'decision')
-                setattr(objects[1], "state", "Answer")
-                self.session.commit()
-            else:
-                self.count += 1
+    def get_founded_user_info(self):
+        person = vk_server.users_info_dict['items'][self.count]
+        user_dating_id = person['id']
+        # проверка наличия найденного Id в таблицах
+        if orm.is_viewed(user_dating_id, self.event.user_id):
+            self.count += 1
+            return
+        first_name = person['first_name']
+        last_name = person['last_name']
+        attachment_list = []
+        try:
+            age = person['bdate']
+            age = get_age(age)
+        except KeyError:
+            age = 'нет данных'
+        link_dict = VkUser().get_users_best_photos(user_dating_id)
+        try:
+            for likes, photo_links in link_dict.items():
+                pattern = re.compile(r"(\d+)\@(.+)")
+                attachment = pattern.sub(r"\1", photo_links)
+                attachment_list.append(f'photo{user_dating_id}_{attachment}')
+            return user_dating_id, first_name, last_name, age, attachment_list
+        except AttributeError:
+            link_dict = 'нет фотографий'
+            return user_dating_id, first_name, last_name, age, link_dict
 
-    def answer_state(self, objects):
-        if self.event.text == "лайк":
-            setattr(objects[1], "state", "Decision")
-            self.session.commit()
-            person = vk_server.users_info_dict['items'][self.count]
-            first_name = person['first_name']
-            last_name = person['last_name']
-            user_dating_id = person['id']
-            try:
-                age = person['bdate']
-                age = get_age(age)
-            except KeyError:
-                age = 'нет данных'
-            DatingUser().add_dating_user(user_dating_id, first_name, last_name, age, self.event.user_id)
-            UserPhoto().add_user_photo(VkUser().get_users_best_photos(user_dating_id), user_dating_id,
-                                       self.event.user_id)
-            self.count += 1
-        elif self.event.text == "крестик":
-            setattr(objects[1], "state", "Decision")
-            self.session.commit()
-            person = vk_server.users_info_dict['items'][self.count]
-            user_ignore_id = person['id']
-            IgnoreUser().add_ignore_user(user_ignore_id, self.event.user_id)
-            self.count += 1
-        elif self.event.text == "пропуск":
-            setattr(objects[1], "state", "Decision")
-            self.session.commit()
-            person = vk_server.users_info_dict['items'][self.count]
-            user_skip_id = person['id']
-            SkippedUser().add_skipped_user(user_skip_id, self.event.user_id)
-            self.count += 1
-        elif self.event.text == "выход":
+    def decision_state(self, objects):
+        user_founded_id, first_name, last_name, age, attachment_list = self.get_founded_user_info()
+        if self.event.text == "выход":
             setattr(objects[1], "state", "Initial")
             self.session.commit()
             self.write_msg_keyboard('Выберите действие:', 'greeting')
+            return
+        elif self.event.text == "лайк":
+            DatingUser().add_dating_user(user_founded_id, first_name, last_name, age, self.event.user_id)
+            UserPhoto().add_user_photo(VkUser().get_users_best_photos(user_founded_id), user_founded_id,
+                                       self.event.user_id)
+            self.count += 1
+            user_founded_id, first_name, last_name, age, attachment_list = self.get_founded_user_info()
+            if len(attachment_list) >= 1:
+                self.write_msg_attachment(f'{first_name} {last_name}', attachment_list, 'decision')
+            else:
+                self.write_msg(f'{first_name} {last_name} - {attachment_list}\n')
+                self.write_msg_keyboard('Выберите действие', 'decision')
+        elif self.event.text == "крестик":
+            IgnoreUser().add_ignore_user(user_founded_id, self.event.user_id)
+            self.count += 1
+            user_founded_id, first_name, last_name, age, attachment_list = self.get_founded_user_info()
+            if len(attachment_list) >= 1:
+                self.write_msg_attachment(f'{first_name} {last_name}', attachment_list, 'decision')
+            else:
+                self.write_msg(f'{first_name} {last_name} - {attachment_list}\n')
+                self.write_msg_keyboard('Выберите действие', 'decision')
+        elif self.event.text == "пропуск":
+            SkippedUser().add_skipped_user(user_founded_id, self.event.user_id)
+            self.count += 1
+            user_founded_id, first_name, last_name, age, attachment_list = self.get_founded_user_info()
+            if len(attachment_list) >= 1:
+                self.write_msg_attachment(f'{first_name} {last_name}', attachment_list, 'decision')
+            else:
+                self.write_msg(f'{first_name} {last_name} - {attachment_list}\n')
+                self.write_msg_keyboard('Выберите действие', 'decision')
+        else:
+            return
 
     def use_state(self, state_name):
         self.states = {
@@ -475,7 +401,7 @@ class Server:
             "Relation": self.relation_state,
             "Range": self.range_state,
             "Decision": self.decision_state,
-            "Answer": self.answer_state,
+            # "Answer": self.answer_state,
             "Like": self.like_state,
             "Ignore": self.ignore_state
         }
@@ -501,9 +427,10 @@ class Server:
                 self.session.commit()
                 self.write_msg_keyboard('Выберите действие:', 'greeting')
             elif self.event.text == '/test':
-                self.write_msg_attachment('Вышло фото?', 364387516)
+                # self.write_msg_attachment('Вышло фото?', 364387516)
+                pass
             else:
-                # print(f'current state = {objects[1].state}')
+                # print(f' current state = {objects[1].state}')
                 ans = self.use_state(objects[1].state)(objects)
                 # при нажатии Выход ans возвращает False и выходим из программы
                 if ans or ans is None:
