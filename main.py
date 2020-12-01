@@ -1,21 +1,14 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-from bot import group_token
 from sql_orm import session
 from server import Server
+from vk_api.longpoll import VkLongPoll
+from vk_api import VkApi
 
 
-# elif state_object.state == 'Error_Initial':
-#     pass
-# elif state_object.state == 'Error_City':
-#     pass
-# elif state_object.state == 'Error_Sex':
-#     pass
-# elif state_object.state == 'Relation':
-#     pass
-# elif state_object.state == 'Error_Relation':
-#     pass
-# elif state_object.state == 'Error_Range':
+group_token = input('Token: ')
+vk = VkApi(token=group_token)
+long_poll = VkLongPoll(vk)
 
 
 if __name__ == '__main__':

@@ -1,15 +1,6 @@
 import re
 import json
 from datetime import date
-from vk_api.longpoll import VkLongPoll
-from vk_api import VkApi
-
-
-
-group_token = input('Token: ')
-# group_token = ''
-vk = VkApi(token=group_token)
-long_poll = VkLongPoll(vk)
 
 
 def get_age(birth_info):
@@ -94,4 +85,3 @@ keyboards = {
 
 if __name__ == '__main__':
     pass
-
