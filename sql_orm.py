@@ -71,7 +71,6 @@ class DatingUser(Base):
         self.user_id = user_id
         session.add(self)
         session.commit()
-        # print(f'юзер {self.dating_user_id} добавлен в лайк список')
 
     def remove_dating_user(self):
         """
@@ -79,7 +78,6 @@ class DatingUser(Base):
         """
         session.delete(self)
         session.commit()
-        # print(f'юзер удален из dating_user')
 
 
 class UserPhoto(Base):
@@ -100,7 +98,6 @@ class UserPhoto(Base):
             self.dating_id = get_dating_id(user_vk_id, search_user_id)
             session.add(self)
             session.commit()
-            # print(f'фото {like} добавлено в список')
 
 
 class IgnoreUser(Base):
@@ -118,7 +115,6 @@ class IgnoreUser(Base):
         self.user_id = search_user_id
         session.add(self)
         session.commit()
-        # print(f'юзер {self.ignore_user_id}  добавлен в игнор список')
         return self.ignore_id
 
     def remove_ignore_user(self):
@@ -127,7 +123,6 @@ class IgnoreUser(Base):
         """
         session.delete(self)
         session.commit()
-        # print(f'юзер удален из ignore_user')
 
 
 class SkippedUser(Base):
@@ -145,7 +140,6 @@ class SkippedUser(Base):
         self.user_id = search_user_id
         session.add(self)
         session.commit()
-        # print(f'юзер {self.skip_user_id} добавлен в скип список')
         return self.skip_id
 
     def remove_skip_user(self):
@@ -154,7 +148,6 @@ class SkippedUser(Base):
         """
         session.delete(self)
         session.commit()
-        # print(f'юзер удален из skipped_user')
 
 
 def get_dating_id(user_vk_id, search_user_id):

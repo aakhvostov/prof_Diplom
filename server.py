@@ -273,47 +273,11 @@ class Server:
                 self.session.commit()
                 self.write_msg('Введите пол:\n1 - женщина\n2 - мужчина')
             except IndexError:
-                setattr(objects[1], "state", "Error_city")
-                self.session.commit()
-                self.write_msg('Вы ввели неверную информацию\nВведите город повторно')
-        else:
-            setattr(objects[1], "state", "Error_city")
-            self.session.commit()
-            self.write_msg('Вы ввели неверную информацию\nВведите город повторно')
-
-    def error_city_state(self, objects):
-        if re.findall(r'[а-яА-яёЁ0-9]+', self.event.text):
-            try:
-                city_name = VkUser().get_city_name(VkUser().get_city_id(self.event.text))[0]['title']
-                setattr(objects[2], "search_city", city_name)
-                setattr(objects[1], "state", "Sex")
-                self.session.commit()
-                self.write_msg('Введите пол:\n1 - женщина\n2 - мужчина')
-            except IndexError:
                 self.write_msg('Вы ввели неверную информацию\nВведите город повторно')
         else:
             self.write_msg('Вы ввели неверную информацию\nВведите город повторно')
 
     def sex_state(self, objects):
-        if self.event.text == '1' or self.event.text == '2':
-            try:
-                sex_value = int(self.event.text)
-                setattr(objects[2], "search_sex", sex_value)
-                setattr(objects[1], "state", "Relation")
-                self.session.commit()
-                self.write_msg('Введите семейное положение\n1 — не женат/не замужем\n2 — есть друг/есть подруга\n'
-                               '3 — помолвлен/помолвлена\n4 — женат/замужем\n5 — всё сложно\n6 — в активном поиске\n'
-                               '7 — влюблён/влюблена\n8 — в гражданском браке\n0 — не указано\n')
-            except ValueError:
-                setattr(objects[1], "state", "Error_sex")
-                self.session.commit()
-                self.write_msg('Вы ввели неверную информацию\nВведите пол повторно\n1 - женщина\n2 - мужчина')
-        else:
-            setattr(objects[1], "state", "Error_sex")
-            self.session.commit()
-            self.write_msg('Вы ввели неверную информацию\nВведите пол повторно\n1 - женщина\n2 - мужчина')
-
-    def error_sex_state(self, objects):
         if self.event.text == '1' or self.event.text == '2':
             try:
                 sex_value = int(self.event.text)
@@ -336,30 +300,6 @@ class Server:
                 setattr(objects[1], "state", "Range")
                 self.write_msg('Введите диапозон поиска ОТ и ДО (через пробел или -)')
             except ValueError:
-                setattr(objects[1], "state", "Error_relation")
-                self.session.commit()
-                self.write_msg('Вы ввели неверную информацию\nВведите статус повторно\n1 — не женат/не замужем\n'
-                               '2 — есть друг/есть подруга\n3 — помолвлен/помолвлена\n4 — женат/замужем\n5 — всё '
-                               'сложно\n6 — в активном поиске\n7 — влюблён/влюблена\n8 — в гражданском браке\n'
-                               '0 — не указано\n')
-        else:
-            setattr(objects[1], "state", "Error_relation")
-            self.session.commit()
-            self.write_msg('Вы ввели неверную информацию\nВведите статус повторно\n1 — не женат/не замужем\n'
-                           '2 — есть друг/есть подруга\n3 — помолвлен/помолвлена\n4 — женат/замужем\n5 — всё '
-                           'сложно\n6 — в активном поиске\n7 — влюблён/влюблена\n8 — в гражданском браке\n'
-                           '0 — не указано\n')
-
-    def error_relation_state(self, objects):
-        if re.findall(r'[0-8]', self.event.text):
-            try:
-                status = int(self.event.text)
-                setattr(objects[2], "search_relation", status)
-                setattr(objects[1], "state", "Range")
-                self.write_msg('Введите диапозон поиска ОТ и ДО (через пробел или -)')
-            except ValueError:
-                setattr(objects[1], "state", "Error_relation")
-                self.session.commit()
                 self.write_msg('Вы ввели неверную информацию\nВведите статус повторно\n1 — не женат/не замужем\n'
                                '2 — есть друг/есть подруга\n3 — помолвлен/помолвлена\n4 — женат/замужем\n5 — всё '
                                'сложно\n6 — в активном поиске\n7 — влюблён/влюблена\n8 — в гражданском браке\n'
@@ -376,37 +316,6 @@ class Server:
             age_from = int(age_pattern.sub(r"\1", self.event.text))
             age_to = int(age_pattern.sub(r"\2", self.event.text))
             if age_to - age_from < 0:
-                setattr(objects[1], "state", "Error_range")
-                self.session.commit()
-                self.write_msg('Вы ввели неверную информацию\nВведите диапозон поиска ОТ и ДО (через пробел или -)')
-                return
-            setattr(objects[2], "search_from", age_from)
-            setattr(objects[2], "search_to", age_to)
-            setattr(objects[1], "state", "Decision")
-            self.session.commit()
-            age_from = objects[2].search_from
-            age_to = objects[2].search_to
-            sex = objects[2].search_sex
-            city_name = objects[2].search_city
-            status = objects[2].search_relation
-            vk_server.search_dating_user(age_from, age_to, sex, city_name, status)
-            user_founded_id, first_name, last_name, age, attachment_list = self.get_founded_user_info()
-            if len(attachment_list) >= 1:
-                self.write_msg_attachment(f'{first_name} {last_name}', attachment_list, 'decision')
-            else:
-                self.write_msg(f'{first_name} {last_name} - {attachment_list}\n')
-                self.write_msg_keyboard('Выберите действие', 'decision')
-        except ValueError:
-            setattr(objects[1], "state", "Error_range")
-            self.session.commit()
-            self.write_msg('Вы ввели неверную информацию\nВведите диапозон поиска ОТ и ДО (через пробел или -)')
-
-    def error_range_state(self, objects):
-        try:
-            age_pattern = re.compile(r'(\d\d?)[ -]+(\d\d?)')
-            age_from = int(age_pattern.sub(r"\1", self.event.text))
-            age_to = int(age_pattern.sub(r"\2", self.event.text))
-            if age_to - age_from < 0:
                 self.write_msg('Вы ввели неверную информацию\nВведите диапозон поиска ОТ и ДО (через пробел или -)')
                 return
             setattr(objects[2], "search_from", age_from)
@@ -427,7 +336,6 @@ class Server:
                 self.write_msg_keyboard('Выберите действие', 'decision')
         except ValueError:
             self.write_msg('Вы ввели неверную информацию\nВведите диапозон поиска ОТ и ДО (через пробел или -)')
-
 
     def get_founded_user_info(self):
         person = vk_server.users_info_dict['items'][self.count]
@@ -499,15 +407,10 @@ class Server:
             "Hello": self.hello_state,
             "Initial": self.initial_state,
             "City": self.city_state,
-            "Error_city": self.error_city_state,
             "Sex": self.sex_state,
-            "Error_sex": self.error_sex_state,
             "Relation": self.relation_state,
-            "Error_relation": self.error_relation_state,
             "Range": self.range_state,
-            "Error_range": self.error_range_state,
             "Decision": self.decision_state,
-            # "Answer": self.answer_state,
             "Like": self.like_state,
             "Ignore": self.ignore_state
         }
@@ -535,7 +438,6 @@ class Server:
             elif self.event.text == '/test':
                 pass
             else:
-                print(f' current state = {objects[1].state}')
                 ans = self.use_state(objects[1].state)(objects)
                 # при нажатии Выход ans возвращает False и выходим из программы
                 if ans or ans is None:

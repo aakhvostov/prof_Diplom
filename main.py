@@ -13,6 +13,4 @@ long_poll = VkLongPoll(vk)
 
 if __name__ == '__main__':
     Server(group_token, session).start()
-    # Что еще необхоимо сделать:
-    # Реализовать тесты на базовую функциональность
     pass
