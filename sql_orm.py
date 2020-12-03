@@ -24,12 +24,20 @@ class UserVk(Base):
     datings = relationship('DatingUser')
     ignores = relationship('IgnoreUser')
 
+    def remove_user_vk(self):
+        session.delete(self)
+        session.commit()
+
 
 class State(Base):
     __tablename__ = 'state'
 
     user_id = Column(Integer, ForeignKey('user_vk.user_id'), primary_key=True)
     state = Column(String)
+
+    def remove_state(self):
+        session.delete(self)
+        session.commit()
 
 
 class Search(Base):
@@ -46,7 +54,10 @@ class Search(Base):
         self.user_id = user_id
         session.add(self)
         session.commit()
-        return self.user_id
+
+    def remove_search(self):
+        session.delete(self)
+        session.commit()
 
 
 class DatingUser(Base):
@@ -205,8 +216,8 @@ class ORMFunctions:
         state = State(user_id=user_id, state='Hello')
         session.add(state)
         session.commit()
-        search = Search().add_search(user_id=user_id)
-        session.add(state)
+        search = Search(user_id=user_id)
+        session.add(search)
         session.commit()
         return user, state, search
 

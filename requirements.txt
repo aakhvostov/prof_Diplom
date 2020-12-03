@@ -2,3 +2,4 @@ sqlalchemy
 psycopg2
 vk_api
 requests
+pytest
