@@ -327,7 +327,7 @@ class Server:
             status = objects[2].search_relation
             vk_server.search_dating_user(age_from, age_to, sex, city_name, status)
             user_founded_id, first_name, last_name, age, attachment_list = self.get_founded_user_info()
-            while user_founded_id in None:
+            while user_founded_id is None:
                     user_founded_id, first_name, last_name, age, attachment_list = self.get_founded_user_info()
             if len(attachment_list) >= 1:
                 self.write_msg_attachment(f'{first_name} {last_name}', attachment_list, 'decision')
