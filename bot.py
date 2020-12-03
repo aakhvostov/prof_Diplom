@@ -28,8 +28,8 @@ def get_text_buttons(label, color, payload=""):
 filter_msg = {'inline': True,
               'buttons': [
                   [
-                      get_text_buttons('да', 'positive'),
-                      get_text_buttons('нет', 'secondary')
+                      get_text_buttons('просмотр', 'positive'),
+                      # get_text_buttons('нет', 'secondary')
                   ],
                   [get_text_buttons('выйти', 'negative')]
               ]
@@ -70,7 +70,7 @@ greeting = {'one_time': True,
             'buttons': [
                 [get_text_buttons('начать поиск', 'primary')],
                 [get_text_buttons('показать/удалить людей', 'secondary')],
-                [get_text_buttons('выйти', 'negative')],
+                # [get_text_buttons('выйти', 'negative')],
             ]
             }
 

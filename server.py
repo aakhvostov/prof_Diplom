@@ -191,11 +191,9 @@ class Server:
             self.session.commit()
             self.write_msg_keyboard(f'У вас найдено - {len(orm.ignore_list)} человек. Приступим?', 'filter_msg')
         elif self.event.text == "выйти":
-            return False
+            self.write_msg_keyboard('Выбери действие', 'greeting')
         else:
             self.write_msg_keyboard('Выбери действие', 'greeting')
-            # setattr(objects[1], "state", "Initial")
-            # self.session.commit()
 
     def like_state(self, objects):
         if self.event.text == "следующий":
@@ -329,6 +327,8 @@ class Server:
             status = objects[2].search_relation
             vk_server.search_dating_user(age_from, age_to, sex, city_name, status)
             user_founded_id, first_name, last_name, age, attachment_list = self.get_founded_user_info()
+            while user_founded_id in None:
+                    user_founded_id, first_name, last_name, age, attachment_list = self.get_founded_user_info()
             if len(attachment_list) >= 1:
                 self.write_msg_attachment(f'{first_name} {last_name}', attachment_list, 'decision')
             else:
@@ -343,7 +343,7 @@ class Server:
         # проверка наличия найденного Id в таблицах
         if orm.is_viewed(user_dating_id, self.event.user_id):
             self.count += 1
-            return
+            return None, None, None, None, None
         first_name = person['first_name']
         last_name = person['last_name']
         attachment_list = []
@@ -358,7 +358,8 @@ class Server:
                 pattern = re.compile(r"(\d+)\@(.+)")
                 attachment = pattern.sub(r"\1", photo_links)
                 attachment_list.append(f'photo{user_dating_id}_{attachment}')
-            return user_dating_id, first_name, last_name, age, attachment_list
+            attachment_string = ",".join(attachment_list)
+            return user_dating_id, first_name, last_name, age, attachment_string
         except AttributeError:
             link_dict = 'нет фотографий'
             return user_dating_id, first_name, last_name, age, link_dict
