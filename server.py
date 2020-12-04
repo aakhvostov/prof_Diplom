@@ -80,12 +80,12 @@ class VkUser:
         :param city: Название города, можно часть или id
         :return: id города
         """
-        try:
-            int(city)
+        if isinstance(city, int):
             return city
-        except ValueError:
+        elif isinstance(city, str):
             city_id = self.vk_api.database.getCities(country_id=1, q=city)
             return city_id['items'][0]['id']
+        raise ValueError
 
     def get_city_name(self, city_id):
         city_name = self.vk_api.database.getCitiesById(city_ids=city_id)
@@ -192,7 +192,6 @@ class Server:
             else:
                 objects[0].state = "Initial"
                 self.write_msg_keyboard('Список закончился. Выберите действие', 'greeting')
-
         elif self.event.text == "удалить":
             orm.dating_list[orm.dating_count].remove_dating_user()
             orm.dating_count += 1
@@ -204,8 +203,8 @@ class Server:
                 objects[0].state = "Initial"
                 self.write_msg_keyboard('Список закончился. Выберите действие', 'greeting')
         elif self.event.text == "выйти":
-            self.write_msg_keyboard('Выбери действие', 'greeting')
             objects[0].state = "Initial"
+            self.write_msg_keyboard('Выбери действие', 'greeting')
         else:
             if orm.show_dating_user():
                 dat_name, dat_age, dat_id, dat_attach = orm.show_dating_user()

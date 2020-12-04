@@ -1,5 +1,11 @@
 import pytest
 from sql_orm import UserVk, DatingUser, IgnoreUser, SkippedUser, session, engine, Base, Search
+from server import Server
+
+
+# def server_dict_input():
+#     server1
+
 
 
 @pytest.fixture(scope="class")
