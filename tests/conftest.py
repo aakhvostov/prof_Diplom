@@ -1,24 +1,21 @@
 import pytest
-from sql_orm import UserVk, DatingUser, IgnoreUser, SkippedUser, session, engine, Base, State, Search
+from sql_orm import UserVk, DatingUser, IgnoreUser, SkippedUser, session, engine, Base, Search
 
 
 @pytest.fixture(scope="class")
 def create_objects():
     """Фикстура по заполнению базы данных пользователями"""
-    user = UserVk(user_id=1, user_firstname='first_name', user_lastname='last_name',
-                  user_age=20, user_sex=1, user_city='city')
+    user = UserVk(user_id=1, user_firstname='first_name', user_lastname='last_name', user_age=20, user_sex=1,
+                  user_city='city', state='Hello')
     session.add(user)
-    session.commit()
-    state = State(user_id=1, state='Hello')
-    session.add(state)
     session.commit()
     search = Search(user_id=1)
     session.add(search)
     session.commit()
-    yield user, state, search
-    state.remove_state()
+    yield user, search
     search.remove_search()
     user.remove_user_vk()
+
 
 @pytest.fixture(scope="class")
 def db_input():

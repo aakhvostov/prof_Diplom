@@ -1,4 +1,3 @@
-import re
 from sqlalchemy import Column, Integer, String, ForeignKey, create_engine
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
@@ -20,22 +19,11 @@ class UserVk(Base):
     user_age = Column(String(15))
     user_sex = Column(Integer)
     user_city = Column(String(40))
-    searches = relationship('Search', )
+    state = Column(String(20))
     datings = relationship('DatingUser')
     ignores = relationship('IgnoreUser')
 
     def remove_user_vk(self):
-        session.delete(self)
-        session.commit()
-
-
-class State(Base):
-    __tablename__ = 'state'
-
-    user_id = Column(Integer, ForeignKey('user_vk.user_id'), primary_key=True)
-    state = Column(String)
-
-    def remove_state(self):
         session.delete(self)
         session.commit()
 
@@ -101,11 +89,10 @@ class UserPhoto(Base):
     dating_id = Column(Integer, ForeignKey('dating_user.dating_id'))
 
     def add_user_photo(self, likes_attechments_links, user_vk_id, search_user_id):
-        pattern = re.compile(r"(\d+)\@(.+)")
         for like, link in likes_attechments_links.items():
             self.photo_likes = like
-            self.photo_link = pattern.sub(r"\2", link)
-            self.attachment_id = pattern.sub(r"\1", link)
+            self.attachment_id = link[0]
+            self.photo_link = link[1]
             self.dating_id = get_dating_id(user_vk_id, search_user_id)
             session.add(self)
             session.commit()
@@ -194,32 +181,27 @@ class ORMFunctions:
         result1 = session.query(DatingUser).filter_by(dating_user_id=user_vk_id, user_id=search_user_id)
         if session.query(result1.exists()).one()[0]:
             return True
-        else:
-            result2 = session.query(IgnoreUser).filter_by(ignore_user_id=user_vk_id, user_id=search_user_id)
-            if session.query(result2.exists()).one()[0]:
-                return True
-            else:
-                result3 = session.query(SkippedUser).filter_by(skip_user_id=user_vk_id, user_id=search_user_id)
-                return session.query(result3.exists()).one()[0]
+        result2 = session.query(IgnoreUser).filter_by(ignore_user_id=user_vk_id, user_id=search_user_id)
+        if session.query(result2.exists()).one()[0]:
+            return True
+        result3 = session.query(SkippedUser).filter_by(skip_user_id=user_vk_id, user_id=search_user_id)
+        return session.query(result3.exists()).one()[0]
 
     @staticmethod
     def looking_for_user_vk(user_id):
-        for user, state, search in session.query(UserVk, State, Search).filter_by(user_id=user_id).all():
-            return user, state, search
+        for user, search in session.query(UserVk, Search).filter_by(user_id=user_id).all():
+            return user, search
 
     @staticmethod
     def add_objects(user_id, params):
         user = UserVk(user_id=user_id, user_firstname=params[0], user_lastname=params[1],
-                      user_age=params[2], user_sex=params[3], user_city=params[4])
+                      user_age=params[2], user_sex=params[3], user_city=params[4], state='Hello')
         session.add(user)
-        session.commit()
-        state = State(user_id=user_id, state='Hello')
-        session.add(state)
         session.commit()
         search = Search(user_id=user_id)
         session.add(search)
         session.commit()
-        return user, state, search
+        return user, search
 
     def get_dating_list(self, vk_search_id):
         """Функция создает список всех понравившихся пользователей"""
