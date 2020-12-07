@@ -267,6 +267,9 @@ class Server:
             self.write_msg('Вы ввели неверную информацию\nВведите пол повторно\n1 - женщина\n2 - мужчина')
 
     def relation_state(self, objects):
+        msg = f'Вы ввели неверную информацию\nВведите статус повторно\n1 — не женат/не замужем\n' \
+              f'2 — есть друг/есть подруга\n3 — помолвлен/помолвлена\n4 — женат/замужем\n5 — всё сложно\n' \
+              f'6 — в активном поиске\n7 — влюблён/влюблена\n8 — в гражданском браке\n0 — не указано\n'
         if re.findall(r'[0-8]', self.event.text):
             try:
                 status = int(self.event.text)
@@ -274,15 +277,9 @@ class Server:
                 objects[1].search_relation = status
                 self.write_msg('Введите диапозон поиска ОТ и ДО (через пробел или -)')
             except ValueError:
-                self.write_msg('Вы ввели неверную информацию\nВведите статус повторно\n1 — не женат/не замужем\n'
-                               '2 — есть друг/есть подруга\n3 — помолвлен/помолвлена\n4 — женат/замужем\n5 — всё '
-                               'сложно\n6 — в активном поиске\n7 — влюблён/влюблена\n8 — в гражданском браке\n'
-                               '0 — не указано\n')
+                self.write_msg(msg)
         else:
-            self.write_msg('Вы ввели неверную информацию\nВведите статус повторно\n1 — не женат/не замужем\n'
-                           '2 — есть друг/есть подруга\n3 — помолвлен/помолвлена\n4 — женат/замужем\n5 — всё '
-                           'сложно\n6 — в активном поиске\n7 — влюблён/влюблена\n8 — в гражданском браке\n'
-                           '0 — не указано\n')
+            self.write_msg(msg)
 
     def range_state(self, objects):
         try:
@@ -403,6 +400,7 @@ class Server:
                 pass
             if orm.looking_for_user_vk(self.event.user_id) is None:
                 objects = orm.add_objects(self.event.user_id, VkUser().get_user_data(self.event.user_id))
+                print(objects)
             else:
                 objects = orm.looking_for_user_vk(self.event.user_id)
             if self.event.text == '/start':

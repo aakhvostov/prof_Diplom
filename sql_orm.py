@@ -36,6 +36,7 @@ class Search(Base):
     search_relation = Column(Integer)
     search_from = Column(Integer)
     search_to = Column(Integer)
+    search_user = relationship("UserVk")
     user_id = Column(Integer, ForeignKey('user_vk.user_id'), primary_key=True)
 
     def add_search(self, user_id):
@@ -196,10 +197,8 @@ class ORMFunctions:
     def add_objects(user_id, params):
         user = UserVk(user_id=user_id, user_firstname=params[0], user_lastname=params[1],
                       user_age=params[2], user_sex=params[3], user_city=params[4], state='Hello')
-        session.add(user)
-        session.commit()
-        search = Search(user_id=user_id)
-        session.add(search)
+        search = Search(search_user=user)
+        session.add_all([user, search])
         session.commit()
         return user, search
 
@@ -232,6 +231,8 @@ class ORMFunctions:
 
 
 if __name__ == '__main__':
-    Base.metadata.drop_all(engine)
-    Base.metadata.create_all(engine)
+    # Base.metadata.drop_all(engine)
+    # Base.metadata.create_all(engine)
+    # ORMFunctions.looking_for_user_vk(13924278)
+    # print(session.query(UserVk, Search).filter_by(user_id=13924278).first())
     pass
