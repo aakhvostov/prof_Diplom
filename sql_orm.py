@@ -4,7 +4,7 @@ from sqlalchemy.ext.declarative import declarative_base
 
 
 Base = declarative_base()
-DSN = 'postgres://nelot:netology@localhost:5432/netology'
+DSN = 'postgresql://nelot:netology@localhost:5432/netology'
 engine = create_engine(DSN)
 Session = sessionmaker(bind=engine)
 session = Session()
@@ -231,8 +231,7 @@ class ORMFunctions:
 
 
 if __name__ == '__main__':
-    # Base.metadata.drop_all(engine)
-    # Base.metadata.create_all(engine)
+    Base.metadata.drop_all(engine)
+    Base.metadata.create_all(engine)
     # ORMFunctions.looking_for_user_vk(13924278)
     # print(session.query(UserVk, Search).filter_by(user_id=13924278).first())
-    pass

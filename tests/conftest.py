@@ -3,14 +3,10 @@ from sql_orm import UserVk, DatingUser, IgnoreUser, SkippedUser, session, engine
 from server import Server
 
 
-# def server_dict_input():
-#     server1
-
-
-
 @pytest.fixture(scope="class")
 def create_objects():
     """Фикстура по заполнению базы данных пользователями"""
+
     user = UserVk(user_id=1, user_firstname='first_name', user_lastname='last_name', user_age=20, user_sex=1,
                   user_city='city', state='Hello')
     session.add(user)
@@ -26,6 +22,7 @@ def create_objects():
 @pytest.fixture(scope="class")
 def db_input():
     """Фикстура по заполнению базы данных пользователями"""
+
     user = UserVk(user_id=1, user_firstname='first_name', user_lastname='last_name',
                   user_age=20, user_sex=1, user_city='city')
     session.add(user)

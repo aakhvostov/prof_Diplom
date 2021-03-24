@@ -25,6 +25,7 @@ class TestServerStates:
     @pytest.mark.usefixtures("create_objects")
     def test_hello_state(self, args, expected_result, create_objects):
         """Тест возможности полного заверешения бота"""
+
         server1.event = Event(args)
         res = server1.hello_state(create_objects)
         assert res == expected_result
