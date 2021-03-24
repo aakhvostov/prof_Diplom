@@ -235,3 +235,4 @@ if __name__ == '__main__':
     Base.metadata.create_all(engine)
     # ORMFunctions.looking_for_user_vk(13924278)
     # print(session.query(UserVk, Search).filter_by(user_id=13924278).first())
+    pass

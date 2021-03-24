@@ -400,7 +400,6 @@ class Server:
                 pass
             if orm.looking_for_user_vk(self.event.user_id) is None:
                 objects = orm.add_objects(self.event.user_id, VkUser().get_user_data(self.event.user_id))
-                print(objects)
             else:
                 objects = orm.looking_for_user_vk(self.event.user_id)
             if self.event.text == '/start':
