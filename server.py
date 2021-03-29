@@ -3,14 +3,16 @@ import re
 from random import randrange
 from vk_api.longpoll import VkLongPoll, VkEventType
 from vk_api import VkApi, exceptions
-from sql_orm import DatingUser, UserPhoto, IgnoreUser, SkippedUser, ORMFunctions
+from sql_orm import DatingUser, UserPhoto, IgnoreUser, SkippedUser, ORMFunctions, Session
 from bot import keyboards, get_age
+
+VK_TOKEN = input('VK_Token: ')
 
 
 class VkUser:
 
     def __init__(self):
-        self.token = '958eb5d439726565e9333aa30e50e0f937ee432e927f0dbd541c541887d919a7c56f95c04217915c32008'
+        self.token = VK_TOKEN
         self.vk_api = VkApi(token=self.token).get_api()
         self.photo_info_dict = {}
         self.users_info_dict = {}
@@ -85,7 +87,7 @@ class VkUser:
         elif isinstance(city, str):
             city_id = self.vk_api.database.getCities(country_id=1, q=city)
             return city_id['items'][0]['id']
-        raise ValueError
+        raise TypeError("city should be int or str")
 
     def get_city_name(self, city_id):
         city_name = self.vk_api.database.getCitiesById(city_ids=city_id)
@@ -136,6 +138,7 @@ class Server:
         self.count = 0
         # текущее состояние пользователя
         self.states = {}
+        self.session = Session()
 
     def write_msg(self, message):
         self.vk.method('messages.send', {'user_id': self.event.user_id,
@@ -159,11 +162,13 @@ class Server:
         if self.event.text == "выход" or self.event.text == "выйти":
             return False
         objects[0].state = "Initial"
+        self.session.commit()
         self.write_msg_keyboard('Выберите действие:', 'greeting')
 
     def initial_state(self, objects):
         if self.event.text == "начать поиск":
             objects[0].state = "City"
+            self.session.commit()
             self.write_msg('Введите город')
         elif self.event.text == "показать/удалить людей":
             orm.get_dating_list(self.event.user_id)
@@ -172,10 +177,12 @@ class Server:
         elif self.event.text == "лайк":
             orm.dating_count = 0
             objects[0].state = "Like"
+            self.session.commit()
             self.write_msg_keyboard(f'У вас найдено - {len(orm.dating_list)} человек. Приступим?', 'filter_msg')
         elif self.event.text == "игнор":
             orm.ignore_count = 0
             objects[0].state = "Ignore"
+            self.session.commit()
             self.write_msg_keyboard(f'У вас найдено - {len(orm.ignore_list)} человек. Приступим?', 'filter_msg')
         elif self.event.text == "выйти":
             self.write_msg_keyboard('Выбери действие', 'greeting')
@@ -191,6 +198,7 @@ class Server:
                                           f'photo{dat_id}_{dat_attach}', 'show_users')
             else:
                 objects[0].state = "Initial"
+                self.session.commit()
                 self.write_msg_keyboard('Список закончился. Выберите действие', 'greeting')
         elif self.event.text == "удалить":
             orm.dating_list[orm.dating_count].remove_dating_user()
@@ -201,9 +209,11 @@ class Server:
                                           f'photo{dat_id}_{dat_attach}', 'show_users')
             else:
                 objects[0].state = "Initial"
+                self.session.commit()
                 self.write_msg_keyboard('Список закончился. Выберите действие', 'greeting')
         elif self.event.text == "выйти":
             objects[0].state = "Initial"
+            self.session.commit()
             self.write_msg_keyboard('Выбери действие', 'greeting')
         else:
             if orm.show_dating_user():
@@ -212,6 +222,7 @@ class Server:
                                           f'photo{dat_id}_{dat_attach}', 'show_users')
             else:
                 objects[0].state = "Initial"
+                self.session.commit()
                 self.write_msg_keyboard('Лайк список пуст. Выберите действие', 'greeting')
 
     def ignore_state(self, objects):
@@ -221,6 +232,7 @@ class Server:
                 self.write_msg_keyboard(f'https://vk.com/id{orm.show_ignore_user()}', 'show_users')
             else:
                 objects[0].state = "Initial"
+                self.session.commit()
                 self.write_msg_keyboard('Список закончился. Выберите действие', 'greeting')
         elif self.event.text == "удалить":
             orm.ignore_list[orm.ignore_count].remove_ignore_user()
@@ -229,15 +241,18 @@ class Server:
                 self.write_msg_keyboard(f'https://vk.com/id{orm.show_ignore_user()}', 'show_users')
             else:
                 objects[0].state = "Initial"
+                self.session.commit()
                 self.write_msg_keyboard('Список закончился. Выберите действие', 'greeting')
         elif self.event.text == "выйти":
             self.write_msg_keyboard('Выбери действие', 'greeting')
             objects[0].state = "Initial"
+            self.session.commit()
         else:
             if orm.show_ignore_user():
                 self.write_msg_keyboard(f'https://vk.com/id{orm.show_ignore_user()}', 'show_users')
             else:
                 objects[0].state = "Initial"
+                self.session.commit()
                 self.write_msg_keyboard('Игнор список пуст. Выберите действие', 'greeting')
 
     def city_state(self, objects):
@@ -246,6 +261,7 @@ class Server:
                 city_name = VkUser().get_city_name(VkUser().get_city_id(self.event.text))[0]['title']
                 objects[0].state = "Sex"
                 objects[1].search_city = city_name
+                self.session.commit()
                 self.write_msg('Введите пол:\n1 - женщина\n2 - мужчина')
             except IndexError:
                 self.write_msg('Вы ввели неверную информацию\nВведите город повторно')
@@ -258,6 +274,7 @@ class Server:
                 sex_value = int(self.event.text)
                 objects[0].state = "Relation"
                 objects[1].search_sex = sex_value
+                self.session.commit()
                 self.write_msg('Введите семейное положение\n1 — не женат/не замужем\n2 — есть друг/есть подруга\n'
                                '3 — помолвлен/помолвлена\n4 — женат/замужем\n5 — всё сложно\n6 — в активном поиске\n'
                                '7 — влюблён/влюблена\n8 — в гражданском браке\n0 — не указано\n')
@@ -275,6 +292,7 @@ class Server:
                 status = int(self.event.text)
                 objects[0].state = "Range"
                 objects[1].search_relation = status
+                self.session.commit()
                 self.write_msg('Введите диапозон поиска ОТ и ДО (через пробел или -)')
             except ValueError:
                 self.write_msg(msg)
@@ -292,8 +310,7 @@ class Server:
             objects[0].state = "Decision"
             objects[1].search_from = age_from
             objects[1].search_to = age_to
-            age_from = objects[1].search_from
-            age_to = objects[1].search_to
+            self.session.commit()
             sex = objects[1].search_sex
             city_name = objects[1].search_city
             status = objects[1].search_relation
@@ -339,6 +356,7 @@ class Server:
         user_founded_id, first_name, last_name, age, attachment_list = self.get_founded_user_info()
         if self.event.text == "выход":
             objects[0].state = "Initial"
+            self.session.commit()
             self.write_msg_keyboard('Выберите действие:', 'greeting')
             return
         elif self.event.text == "лайк":
@@ -404,6 +422,7 @@ class Server:
                 objects = orm.looking_for_user_vk(self.event.user_id)
             if self.event.text == '/start':
                 objects[0].state = "Initial"
+                self.session.commit()
                 self.write_msg_keyboard('Выберите действие:', 'greeting')
             elif self.event.text == '/test':
                 pass
